@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/elvis88/baas/db"
 
@@ -15,6 +17,7 @@ import (
 )
 
 func main() {
+	SignalHandler()
 	// db
 	username := viper.GetString("baas.mysql.user")
 	password := viper.GetString("baas.mysql.password")
@@ -50,4 +53,15 @@ func init() {
 
 	//全局配置
 	// fmt.Println("load config: ", viper.AllSettings())
+}
+
+func SignalHandler() {
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		fmt.Println("system exit")
+		_ = db.DB.Close()
+		os.Exit(0)
+	}()
 }
