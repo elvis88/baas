@@ -2,8 +2,10 @@ package db
 
 import (
 	"fmt"
+
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
+
 	//"github.com/elvis88/baas/core/model"
 	"os"
 )
@@ -18,4 +20,8 @@ func InitDb(connStr string) {
 		os.Exit(-1)
 	}
 	//model.ModelInit()
+	gorm.DefaultTableNameHandler = func(db *gorm.DB, defaultTableName string) string {
+		return "t_" + defaultTableName
+	}
+	DB.SingularTable(true)
 }
