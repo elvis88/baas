@@ -16,15 +16,16 @@ import (
 
 func main() {
 	// db
-	username := viper.GetString("KubeEngine.MasterConfig")
-	password := viper.GetString("KubeEngine.MasterConfig")
-	ip := viper.GetString("KubeEngine.MasterConfig")
-	port := viper.GetString("KubeEngine.MasterConfig")
-	database := viper.GetString("KubeEngine.MasterConfig")
+	username := viper.GetString("baas.mysql.user")
+	password := viper.GetString("baas.mysql.password")
+	ip := viper.GetString("baas.mysql.ip")
+	port := viper.GetString("baas.mysql.port")
+	database := viper.GetString("baas.mysql.database")
 	connStr := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&loc=%s&parseTime=true",
 		username, password, ip, port, database, url.QueryEscape("Asia/Shanghai"))
 	db, err := gorm.Open("mysql", connStr)
 	if err != nil {
+		_ = fmt.Errorf("connect", err)
 		os.Exit(-1)
 	}
 
