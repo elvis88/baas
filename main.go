@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/elvis88/baas/core/model"
 	"net/url"
 	"os"
 
@@ -26,6 +27,8 @@ func main() {
 	db.InitDb(connStr)
 
 	logger := log.GetLogger("baas", log.DEBUG)
+
+	model.ModelInit()
 
 	router := gin.New()
 	router.Use(ginutil.UseLogger(router, logger.Debugf))
