@@ -1,7 +1,7 @@
 baas:
     mysql:
       user: root
-      password: 123456
+      password: humengya
       ip: 127.0.0.1
       port: 3306
       database: baas

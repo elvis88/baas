@@ -36,7 +36,8 @@ func main() {
 			"message": "ok",
 		})
 	})
-	router.Run()
+
+	router.Run(":8081")
 }
 
 func init() {
