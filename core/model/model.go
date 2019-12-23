@@ -4,44 +4,36 @@ import (
 	"time"
 
 	"github.com/elvis88/baas/db"
+	"github.com/jinzhu/gorm"
 )
 
 // User 用户表
 type User struct {
-	// gorm.Model
-	ID         int64  `gorm:"primary_key;auto_increment"`
+	gorm.Model
 	Name       string `gorm:"type:varchar(100);not null;unique"`
 	Pwd        string `gorm:"not null"`
 	Nick       string `gorm:"not null"`
 	Email      string
 	Tele       string
 	CreateTime time.Time `gorm:"column:create_time"`
+	Role       []Role    `gorm:"many2many:user_role;"`
 }
 
 type Role struct {
-	ID   int64  `gorm:"primary_key;auto_increment"`
+	gorm.Model
 	Name string `gorm:"type:varchar(100);not null;unique"`
-}
-
-type UserRole struct {
-	ID   int64 `gorm:"primary_key;auto_increment"`
-	Uid  uint  `sql:"type:integer REFERENCES t_user(id) on update no action on delete no action"`
-	User User  `gorm:"ForeignKey:Uid"`
-	Rid  uint  `sql:"type:integer REFERENCES t_role(id) on update no action on delete no action"`
-	Role Role  `gorm:"ForeignKey:Rid"`
 }
 
 // 区块链表结构
 type Chain struct {
-	Id          int64  `gorm:"primary_key;AUTO_INCREMENT"`
+	gorm.Model
 	Name        string `gorm:"not null;unique"`
-	Uid         uint   `sql:"type:integer REFERENCES t_user(id) on update no action on delete no action"`
-	User        User   `gorm:"ForeignKey:Uid"`
+	UserID      uint
 	Description string `gorm:"column:desc"`
 }
 
 type ChainDeploy struct {
-	ID    int64  `gorm:"primary_key;auto_increment"`
+	gorm.Model
 	Name  string `gorm:"type:varchar(100);not null;unique"`
 	Uid   uint   `sql:"type:integer REFERENCES t_user(id) on update no action on delete no action"`
 	User  User   `gorm:"ForeignKey:Uid"`
@@ -51,7 +43,7 @@ type ChainDeploy struct {
 }
 
 type Browser struct {
-	ID   int64  `gorm:"primary_key;auto_increment"`
+	gorm.Model
 	Name string `gorm:"type:varchar(100);not null;unique"`
 	Uid  uint   `sql:"type:integer REFERENCES t_user(id) on update no action on delete no action"`
 	User User   `gorm:"ForeignKey:Uid"`
@@ -59,7 +51,7 @@ type Browser struct {
 }
 
 type BrowserDeploy struct {
-	ID      int64   `gorm:"primary_key;auto_increment"`
+	gorm.Model
 	Name    string  `gorm:"type:varchar(100);not null;unique"`
 	Uid     uint    `sql:"type:integer REFERENCES t_user(id) on update no action on delete no action"`
 	User    User    `gorm:"ForeignKey:Uid"`
@@ -69,5 +61,5 @@ type BrowserDeploy struct {
 }
 
 func ModelInit() {
-	db.DB.AutoMigrate(&User{}, Role{}, UserRole{}, Browser{}, BrowserDeploy{}, Chain{}, ChainDeploy{})
+	db.DB.Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(&User{}, Role{}, Browser{}, BrowserDeploy{}, Chain{}, ChainDeploy{})
 }
