@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/elvis88/baas/core/model"
 	"net/url"
 	"os"
 	"os/signal"
@@ -30,6 +31,8 @@ func main() {
 
 	logger := log.GetLogger("baas", log.DEBUG)
 
+	model.ModelInit()
+
 	router := gin.New()
 	router.Use(ginutil.UseLogger(router, logger.Debugf))
 	router.Use(gin.Recovery())
@@ -39,7 +42,9 @@ func main() {
 			"message": "ok",
 		})
 	})
-	router.Run()
+
+	servicePort := viper.GetString("baas.config.port")
+	_ = router.Run(fmt.Sprintf(":%s", servicePort))
 }
 
 func init() {

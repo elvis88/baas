@@ -2,10 +2,10 @@ package db
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
+	//"github.com/elvis88/baas/core/model"
+	"os"
 )
 
 var DB *gorm.DB
@@ -14,7 +14,8 @@ func InitDb(connStr string) {
 	var err error
 	DB, err = gorm.Open("mysql", connStr)
 	if err != nil {
-		_ = fmt.Errorf("connect", err)
+		fmt.Println("connect fail", err)
 		os.Exit(-1)
 	}
+	//model.ModelInit()
 }

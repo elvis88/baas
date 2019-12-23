@@ -6,3 +6,5 @@ baas:
       port: 3306
       database: baas
     shared: $GOPATH/src/github.com/elvis88/baas/shared
+    config:
+      port: 8080
