@@ -43,7 +43,7 @@ func main() {
 		})
 	})
 
-	router.Run(":8081")
+	router.Run()
 }
 
 func init() {
