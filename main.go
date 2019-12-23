@@ -43,7 +43,8 @@ func main() {
 		})
 	})
 
-	router.Run()
+	servicePort := viper.GetString("baas.config.port")
+	_ = router.Run(fmt.Sprintf(":%s", servicePort))
 }
 
 func init() {
