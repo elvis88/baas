@@ -18,8 +18,13 @@ import (
 )
 
 func main() {
+	// service signal handler
 	SignalHandler()
-	// db
+
+	// 初始化log
+	logger := log.GetLogger("baas", log.DEBUG)
+
+	// db 初始化 & connect
 	username := viper.GetString("baas.mysql.user")
 	password := viper.GetString("baas.mysql.password")
 	ip := viper.GetString("baas.mysql.ip")
@@ -29,20 +34,23 @@ func main() {
 		username, password, ip, port, database, url.QueryEscape("Asia/Shanghai"))
 	db.InitDb(connStr)
 
-	logger := log.GetLogger("baas", log.DEBUG)
-
+	// 表创建
 	model.ModelInit()
 
+	// 创建服务
 	router := gin.New()
 	router.Use(ginutil.UseLogger(router, logger.Debugf))
 	router.Use(gin.Recovery())
-	core.Server(router, db.DB)
-	router.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "ok",
-		})
-	})
 
+	// 注册服务
+	core.Server(router)
+
+	// router.GET("/", func(c *gin.Context) {
+	// 	c.JSON(200, gin.H{
+	// 		"message": "ok",
+	// 	})
+	// })
+	// 设置服务端口
 	servicePort := viper.GetString("baas.config.port")
 	_ = router.Run(fmt.Sprintf(":%s", servicePort))
 }
@@ -52,7 +60,7 @@ func init() {
 	viper.AddConfigPath(".")    // optionally look for config in the working directory
 	err := viper.ReadInConfig() // Find and read the feconfig.yaml file
 	if err != nil {             // Handle errors reading the config file
-		fmt.Println("read config file error: %s \n", err)
+		fmt.Println("read config file error: \n", err)
 		os.Exit(-1)
 	}
 
