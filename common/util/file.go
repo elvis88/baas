@@ -1,6 +1,10 @@
 package util
 
-import "os"
+import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
+)
 
 // Exists 判断档案是否存在
 func Exists(name string) bool {
@@ -40,4 +44,24 @@ func RemoveDir(dir string) error {
 		return err
 	}
 	return nil
+}
+
+// CopyDir 复制文件夹
+func CopyDir(fpathname, tpathname string, copyTo func(tfilename, filename string) error) error {
+	rd, err := ioutil.ReadDir(fpathname)
+	for _, fi := range rd {
+		if fi.IsDir() {
+			if err := CreatedDir(filepath.Join(tpathname, fi.Name())); err != nil {
+				return nil
+			}
+			if err := CopyDir(filepath.Join(fpathname, fi.Name()), filepath.Join(tpathname, fi.Name()), copyTo); err != nil {
+				return err
+			}
+		} else {
+			if err := copyTo(filepath.Join(fpathname, fi.Name()), filepath.Join(tpathname, fi.Name())); err != nil {
+				return err
+			}
+		}
+	}
+	return err
 }

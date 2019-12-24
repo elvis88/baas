@@ -1,3 +1,4 @@
 go.sum
 baas
-shared/data/
+shared/data
+!shared/data/admin
