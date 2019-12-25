@@ -27,4 +27,6 @@ var (
 	ADD_FAIL              = errors.New("添加失败")
 	DELETE_FAIL           = errors.New("删除失败")
 	UPDATE_FAIL           = errors.New("更新失败")
+
+	CHAINID_NOT_EXIST       = errors.New("链不存在")
 )
