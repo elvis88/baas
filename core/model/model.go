@@ -1,12 +1,19 @@
 package model
 
 import (
-	"github.com/jinzhu/gorm"
+	"time"
 )
+
+type Model struct {
+	ID        uint       `json:"id" gorm:"primary_key"`
+	CreatedAt time.Time  `json:"created"`
+	UpdatedAt time.Time  `json:"updated"`
+	DeletedAt *time.Time `json:"deleted" sql:"index"`
+}
 
 // User 用户表
 type User struct {
-	gorm.Model
+	Model
 
 	Name      string `json:"name" gorm:"type:varchar(100);not null;unique"`
 	Password  string `json:"pwd" gorm:"not null"`
@@ -23,7 +30,7 @@ type User struct {
 
 // Role 角色表
 type Role struct {
-	gorm.Model
+	Model
 
 	Name        string `gorm:"type:varchar(100);not null;unique"`
 	Description string `gorm:"column:desc"`
@@ -31,7 +38,7 @@ type Role struct {
 
 // Chain 区块链表
 type Chain struct {
-	gorm.Model
+	Model
 
 	Name        string `gorm:"not null;unique"`
 	Description string `gorm:"column:desc"`
@@ -42,7 +49,7 @@ type Chain struct {
 
 // ChainDeploy 区块链部署表
 type ChainDeploy struct {
-	gorm.Model
+	Model
 
 	Name        string `gorm:"type:varchar(100);not null;unique"`
 	Description string `gorm:"column:desc"`
@@ -53,7 +60,7 @@ type ChainDeploy struct {
 
 // Browser 浏览器表
 type Browser struct {
-	gorm.Model
+	Model
 
 	Name        string `gorm:"type:varchar(100);not null;unique"`
 	Description string `gorm:"column:desc"`
@@ -64,7 +71,7 @@ type Browser struct {
 
 // BrowserDeploy 浏览器部署表
 type BrowserDeploy struct {
-	gorm.Model
+	Model
 
 	Name        string `gorm:"type:varchar(100);not null;unique"`
 	Description string `gorm:"column:desc"`

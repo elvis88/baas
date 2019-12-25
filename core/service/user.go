@@ -36,7 +36,7 @@ func (srv *UserService) UserLogin(ctx *gin.Context) {
 	login := &LoginRequest{}
 	if err := ctx.ShouldBindJSON(login); err != nil {
 		logger.Error(err)
-		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err)
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
 
@@ -46,12 +46,12 @@ func (srv *UserService) UserLogin(ctx *gin.Context) {
 			Name: login.UserName,
 		}).First(usr).Error; err != nil {
 			logger.Error(err)
-			ginutil.Response(ctx, NAME_NOT_EXIST, err)
+			ginutil.Response(ctx, NAME_NOT_EXIST, err.Error())
 			return
 		}
 		if val, err := password.Validate(login.Password, usr.Password); !val {
 			logger.Error(err)
-			ginutil.Response(ctx, PASSWORD_WRONG, err)
+			ginutil.Response(ctx, PASSWORD_WRONG, err.Error())
 			return
 		}
 	} else if len(login.Email) != 0 { // 邮箱验证码登陆
@@ -59,7 +59,7 @@ func (srv *UserService) UserLogin(ctx *gin.Context) {
 			Email: login.Email,
 		}).First(usr).Error; err != nil {
 			logger.Error(err)
-			ginutil.Response(ctx, EMAIL_NOT_EXIST, err)
+			ginutil.Response(ctx, EMAIL_NOT_EXIST, err.Error())
 			return
 		}
 	} else if len(login.Telephone) != 0 { // 手机验证码登陆
@@ -67,7 +67,7 @@ func (srv *UserService) UserLogin(ctx *gin.Context) {
 			Telephone: login.Telephone,
 		}).First(usr).Error; err != nil {
 			logger.Error(err)
-			ginutil.Response(ctx, TEL_NOT_EXIST, err)
+			ginutil.Response(ctx, TEL_NOT_EXIST, err.Error())
 			return
 		}
 	} else {
@@ -83,7 +83,7 @@ func (srv *UserService) UserLogin(ctx *gin.Context) {
 	token, err := jwt.CreateToken(TokenKey, info)
 	if err != nil {
 		logger.Error(err)
-		ginutil.Response(ctx, UNKOWN_TYPE, err)
+		ginutil.Response(ctx, LOGIN_FAIL, err.Error())
 		return
 	}
 
@@ -126,12 +126,12 @@ func (srv *UserService) UserAuthorize(ctx *gin.Context) {
 
 	usr := &model.User{}
 	if err := srv.DB.Where(&model.User{
-		Model: gorm.Model{
+		Model: model.Model{
 			ID: session.(uint),
 		},
 	}).First(usr).Error; err != nil {
 		logger.Error(err)
-		ginutil.Response(ctx, ID_NOT_EXIST, err)
+		ginutil.Response(ctx, ID_NOT_EXIST, err.Error())
 		ctx.Abort()
 		return
 	}
@@ -145,7 +145,7 @@ func (srv *UserService) UserInfo(ctx *gin.Context) {
 	session := ginutil.GetSession(ctx, token)
 	usr := &model.User{}
 	srv.DB.Where(&model.User{
-		Model: gorm.Model{
+		Model: model.Model{
 			ID: session.(uint),
 		},
 	}).First(usr)
@@ -166,14 +166,14 @@ func (srv *UserService) UserList(ctx *gin.Context) {
 	}
 	if err := ctx.ShouldBindJSON(req); err != nil {
 		logger.Error(err)
-		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err)
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
 	usrs := &model.User{}
 	offset := req.Page * req.PageSize
 	if err := srv.DB.Offset(offset).Limit(req.PageSize).Find(usrs).Error; err != nil {
 		logger.Error(err)
-		ginutil.Response(ctx, GET_FAIL, err)
+		ginutil.Response(ctx, GET_FAIL, err.Error())
 		return
 	}
 	ginutil.Response(ctx, nil, usrs)
@@ -185,12 +185,12 @@ func (srv *UserService) UserAdd(ctx *gin.Context) {
 	usr := &model.User{}
 	if err := ctx.ShouldBindJSON(usr); err != nil {
 		logger.Error(err)
-		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err)
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
 	if err := srv.DB.Create(&usr).Error; err != nil {
 		logger.Error(err)
-		ginutil.Response(ctx, ADD_FAIL, err)
+		ginutil.Response(ctx, ADD_FAIL, err.Error())
 		return
 	}
 	ginutil.Response(ctx, nil, usr)
@@ -202,13 +202,13 @@ func (srv *UserService) UserDelete(ctx *gin.Context) {
 	usr := &model.User{}
 	if err := ctx.ShouldBindJSON(usr); err != nil {
 		logger.Error(err)
-		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err)
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
 	fmt.Println("delete", usr.ID)
 	if err := srv.DB.Unscoped().Delete(&usr).Error; err != nil {
 		logger.Error(err)
-		ginutil.Response(ctx, DELETE_FAIL, err)
+		ginutil.Response(ctx, DELETE_FAIL, err.Error())
 		return
 	}
 	ginutil.Response(ctx, nil, nil)
@@ -220,20 +220,31 @@ func (srv *UserService) UserUpdate(ctx *gin.Context) {
 	usr := &model.User{}
 	if err := ctx.ShouldBindJSON(usr); err != nil {
 		logger.Error(err)
-		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err)
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
 
 	if err := srv.DB.Model(&model.User{
-		Model: gorm.Model{
+		Model: model.Model{
 			ID: usr.ID,
 		},
 	}).Updates(usr).Error; err != nil {
 		logger.Error(err)
-		ginutil.Response(ctx, UPDATE_FAIL, err)
+		ginutil.Response(ctx, UPDATE_FAIL, err.Error())
 		return
 	}
-	ginutil.Response(ctx, nil, usr)
+
+	nusr := &model.User{}
+	if err := srv.DB.Where(&model.User{
+		Model: model.Model{
+			ID: usr.ID,
+		},
+	}).First(nusr).Error; err != nil {
+		ginutil.Response(ctx, UPDATE_FAIL, err.Error())
+	} else {
+		ginutil.Response(ctx, nil, nusr)
+	}
+
 	return
 }
 
