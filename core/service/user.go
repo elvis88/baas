@@ -1,6 +1,8 @@
 package service
 
 import (
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/elvis88/baas/common/ginutil"
@@ -25,11 +27,6 @@ type LoginRequest struct {
 	Code      string `json:"code"`
 }
 
-// LoginResponse 登陆响应参数
-type LoginResponse struct {
-	Token string `json:"token"`
-}
-
 // UserLogin 登陆
 func (srv *UserService) UserLogin(ctx *gin.Context) {
 	login := &LoginRequest{}
@@ -48,6 +45,7 @@ func (srv *UserService) UserLogin(ctx *gin.Context) {
 			ginutil.Response(ctx, NAME_NOT_EXIST, err.Error())
 			return
 		}
+
 		if val, err := password.Validate(login.Password, usr.Password); !val {
 			logger.Error(err)
 			ginutil.Response(ctx, PASSWORD_WRONG, nil)
@@ -61,6 +59,25 @@ func (srv *UserService) UserLogin(ctx *gin.Context) {
 			ginutil.Response(ctx, EMAIL_NOT_EXIST, err.Error())
 			return
 		}
+
+		session := ginutil.GetSession(ctx, CodeLoginKey+login.Email)
+		if nil == session {
+			ginutil.Response(ctx, CODE_NOT_EXIST, nil)
+			return
+		}
+
+		infoMap := session.(map[string]interface{})
+		if float64(time.Now().Unix()) >= infoMap["exp"].(float64) {
+			ginutil.Response(ctx, CODE_EXPIRE, nil)
+			return
+		}
+
+		if strings.Compare(infoMap["code"].(string), login.Code) != 0 {
+			ginutil.Response(ctx, CODE_WRONG, nil)
+			return
+		}
+
+		ginutil.RemoveSession(ctx, CodeLoginKey+login.Email)
 	} else if len(login.Telephone) != 0 { // 手机验证码登陆
 		if err := srv.DB.Where(&model.User{
 			Telephone: login.Telephone,
@@ -69,6 +86,25 @@ func (srv *UserService) UserLogin(ctx *gin.Context) {
 			ginutil.Response(ctx, TEL_NOT_EXIST, err.Error())
 			return
 		}
+
+		session := ginutil.GetSession(ctx, CodeLoginKey+login.Telephone)
+		if nil == session {
+			ginutil.Response(ctx, CODE_NOT_EXIST, nil)
+			return
+		}
+
+		infoMap := session.(map[string]interface{})
+		if float64(time.Now().Unix()) >= infoMap["exp"].(float64) {
+			ginutil.Response(ctx, CODE_EXPIRE, nil)
+			return
+		}
+
+		if strings.Compare(infoMap["code"].(string), login.Code) != 0 {
+			ginutil.Response(ctx, CODE_WRONG, nil)
+			return
+		}
+
+		ginutil.RemoveSession(ctx, CodeLoginKey+login.Telephone)
 	} else {
 		ginutil.Response(ctx, UNKOWN_TYPE, nil)
 		return
@@ -86,18 +122,10 @@ func (srv *UserService) UserLogin(ctx *gin.Context) {
 		return
 	}
 
+	ctx.Header(headerTokenKey, token)
 	ginutil.SetSession(ctx, token, usr.ID)
-	ginutil.Response(ctx, nil, &LoginResponse{
-		Token: token,
-	})
+	ginutil.Response(ctx, nil, usr)
 	return
-}
-
-// UserLogout 退出登陆
-func (srv *UserService) UserLogout(ctx *gin.Context) {
-	token := ctx.GetHeader(headerTokenKey)
-	ginutil.RemoveSession(ctx, token)
-	ginutil.Response(ctx, nil, nil)
 }
 
 // UserAuthorize 用户验证
@@ -138,6 +166,13 @@ func (srv *UserService) UserAuthorize(ctx *gin.Context) {
 	ctx.Next()
 }
 
+// UserLogout 退出登陆
+func (srv *UserService) UserLogout(ctx *gin.Context) {
+	token := ctx.GetHeader(headerTokenKey)
+	ginutil.RemoveSession(ctx, token)
+	ginutil.Response(ctx, nil, nil)
+}
+
 // UserInfo 用户信息
 func (srv *UserService) UserInfo(ctx *gin.Context) {
 	token := ctx.GetHeader(headerTokenKey)
@@ -151,10 +186,10 @@ func (srv *UserService) UserInfo(ctx *gin.Context) {
 	ginutil.Response(ctx, nil, usr)
 }
 
+// PagerRequest ...
 type PagerRequest struct {
 	Page     int `json:"page"`     //当前页
 	PageSize int `json:"pageSize"` //每页条数
-	Total    int `json:"total"`    //总条数
 }
 
 // UserList 用户列表
@@ -214,22 +249,15 @@ func (srv *UserService) UserDelete(ctx *gin.Context) {
 		return
 	}
 
-	oldusr := &model.User{}
-	if err := srv.DB.Where(&model.User{
-		Model: model.Model{
-			ID: usr.ID,
-		},
-	}).First(oldusr).Error; err != nil {
-		logger.Error(err)
-		ginutil.Response(ctx, DELETE_FAIL, err.Error())
+	if res := srv.DB.Unscoped().Delete(&usr); res.RowsAffected == 0 {
+		errstr := ""
+		if res.Error != nil {
+			errstr = res.Error.Error()
+		}
+		ginutil.Response(ctx, UPDATE_FAIL, errstr)
 		return
 	}
 
-	if err := srv.DB.Unscoped().Delete(&usr).Error; err != nil {
-		logger.Error(err)
-		ginutil.Response(ctx, DELETE_FAIL, err.Error())
-		return
-	}
 	ginutil.Response(ctx, nil, nil)
 	return
 }
@@ -243,39 +271,208 @@ func (srv *UserService) UserUpdate(ctx *gin.Context) {
 		return
 	}
 
-	oldusr := &model.User{}
-	if err := srv.DB.Where(&model.User{
+	usr.CreatedAt = time.Time{}
+	usr.Password = ""
+	usr.Telephone = ""
+	usr.Email = ""
+
+	if res := srv.DB.Model(&model.User{
 		Model: model.Model{
 			ID: usr.ID,
 		},
-	}).First(oldusr).Error; err != nil {
-		logger.Error(err)
-		ginutil.Response(ctx, UPDATE_FAIL, err.Error())
+	}).Updates(usr); res.RowsAffected == 0 {
+		errstr := ""
+		if res.Error != nil {
+			errstr = res.Error.Error()
+		}
+		ginutil.Response(ctx, UPDATE_FAIL, errstr)
 		return
 	}
 
-	usr.CreatedAt = oldusr.CreatedAt
-	usr.Password = oldusr.Password
-	usr.Telephone = oldusr.Telephone
-	usr.Email = oldusr.Email
-
-	if err := srv.DB.Model(&model.User{
-		Model: model.Model{
-			ID: usr.ID,
-		},
-	}).Updates(usr).Error; err != nil {
-		logger.Error(err)
-		ginutil.Response(ctx, UPDATE_FAIL, err.Error())
-		return
-	}
-
+	srv.DB.First(usr)
 	ginutil.Response(ctx, nil, usr)
 	return
 }
 
+// ChangePWDRequest 修改密码
+type ChangePWDRequest struct {
+	Code     string `json:"code"`
+	Password string `json:"pwd"`
+}
+
 // UserChangePWD 修改密码
 func (srv *UserService) UserChangePWD(ctx *gin.Context) {
+	req := &ChangePWDRequest{}
+	if err := ctx.ShouldBindJSON(req); err != nil {
+		logger.Error(err)
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
+		return
+	}
 
+	token := ctx.GetHeader(headerTokenKey)
+	id := ginutil.GetSession(ctx, token).(uint)
+	userID := strconv.FormatUint(uint64(id), 10)
+	session := ginutil.GetSession(ctx, CodePWDKey+userID)
+	if nil == session {
+		ginutil.Response(ctx, CODE_NOT_EXIST, nil)
+		return
+	}
+
+	infoMap := session.(map[string]interface{})
+	if float64(time.Now().Unix()) >= infoMap["exp"].(float64) {
+		ginutil.Response(ctx, CODE_EXPIRE, nil)
+		return
+	}
+
+	if strings.Compare(infoMap["code"].(string), req.Code) != 0 {
+		ginutil.Response(ctx, CODE_WRONG, nil)
+		return
+	}
+
+	ginutil.RemoveSession(ctx, CodePWDKey+userID)
+
+	password, err := password.CryTo(req.Password, 12, "default")
+	if err != nil {
+		logger.Error(err)
+		ginutil.Response(ctx, CHANGE_PWD_FAIL, err.Error())
+		return
+	}
+
+	usr := &model.User{
+		Password: password,
+	}
+	if res := srv.DB.Model(&model.User{
+		Model: model.Model{
+			ID: id,
+		},
+	}).Updates(usr); res.RowsAffected == 0 {
+		errstr := ""
+		if res.Error != nil {
+			errstr = res.Error.Error()
+		}
+		ginutil.Response(ctx, CHANGE_PWD_FAIL, errstr)
+		return
+	}
+
+	srv.DB.First(usr)
+	ginutil.Response(ctx, nil, usr)
+	return
+}
+
+// ChangeTelRequest 修改手机号
+type ChangeTelRequest struct {
+	Code      string `json:"code"`
+	Telephone string `json:"tel"`
+}
+
+// UserChangeTel 修改手机号
+func (srv *UserService) UserChangeTel(ctx *gin.Context) {
+	req := &ChangeTelRequest{}
+	if err := ctx.ShouldBindJSON(req); err != nil {
+		logger.Error(err)
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
+		return
+	}
+
+	token := ctx.GetHeader(headerTokenKey)
+	id := ginutil.GetSession(ctx, token).(uint)
+	userID := strconv.FormatUint(uint64(id), 10)
+	session := ginutil.GetSession(ctx, CodeTelKey+userID)
+	if nil == session {
+		ginutil.Response(ctx, CODE_NOT_EXIST, nil)
+		return
+	}
+
+	infoMap := session.(map[string]interface{})
+	if float64(time.Now().Unix()) >= infoMap["exp"].(float64) {
+		ginutil.Response(ctx, CODE_EXPIRE, nil)
+		return
+	}
+
+	if strings.Compare(infoMap["code"].(string), req.Code) != 0 {
+		ginutil.Response(ctx, CODE_WRONG, nil)
+		return
+	}
+
+	ginutil.RemoveSession(ctx, CodeTelKey+userID)
+
+	usr := &model.User{
+		Telephone: req.Telephone,
+	}
+	if res := srv.DB.Model(&model.User{
+		Model: model.Model{
+			ID: id,
+		},
+	}).Updates(usr); res.RowsAffected == 0 {
+		errstr := ""
+		if res.Error != nil {
+			errstr = res.Error.Error()
+		}
+		ginutil.Response(ctx, CHANGE_TEL_FAIL, errstr)
+		return
+	}
+
+	srv.DB.First(usr)
+	ginutil.Response(ctx, nil, usr)
+	return
+}
+
+// ChangeEmailRequest 修改邮箱
+type ChangeEmailRequest struct {
+	Code  string `json:"code"`
+	Email string `json:"email"`
+}
+
+// UserChangeEmail 修改邮箱
+func (srv *UserService) UserChangeEmail(ctx *gin.Context) {
+	req := &ChangeEmailRequest{}
+	if err := ctx.ShouldBindJSON(req); err != nil {
+		logger.Error(err)
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
+		return
+	}
+
+	token := ctx.GetHeader(headerTokenKey)
+	id := ginutil.GetSession(ctx, token).(uint)
+	userID := strconv.FormatUint(uint64(id), 10)
+	session := ginutil.GetSession(ctx, CodeEmailKey+userID)
+	if nil == session {
+		ginutil.Response(ctx, CODE_NOT_EXIST, nil)
+		return
+	}
+
+	infoMap := session.(map[string]interface{})
+	if float64(time.Now().Unix()) >= infoMap["exp"].(float64) {
+		ginutil.Response(ctx, CODE_EXPIRE, nil)
+		return
+	}
+
+	if strings.Compare(infoMap["code"].(string), req.Code) != 0 {
+		ginutil.Response(ctx, CODE_WRONG, nil)
+		return
+	}
+
+	ginutil.RemoveSession(ctx, CodeEmailKey+userID)
+
+	usr := &model.User{
+		Email: req.Email,
+	}
+	if res := srv.DB.Model(&model.User{
+		Model: model.Model{
+			ID: id,
+		},
+	}).Updates(usr); res.RowsAffected == 0 {
+		errstr := ""
+		if res.Error != nil {
+			errstr = res.Error.Error()
+		}
+		ginutil.Response(ctx, CHANGE_EMAIL_FAIL, errstr)
+		return
+	}
+
+	srv.DB.First(usr)
+	ginutil.Response(ctx, nil, usr)
+	return
 }
 
 // Register ...
@@ -290,4 +487,6 @@ func (srv *UserService) Register(api *gin.RouterGroup) {
 	api.POST("/user/delete", srv.UserDelete)
 	api.POST("/user/update", srv.UserUpdate)
 	api.POST("/user/changepwd", srv.UserChangePWD)
+	api.POST("/user/changetel", srv.UserChangeTel)
+	api.POST("/user/changeemail", srv.UserChangeEmail)
 }
