@@ -74,7 +74,7 @@ func init() {
 	viper.AddConfigPath(".")    // optionally look for config in the working directory
 	err := viper.ReadInConfig() // Find and read the feconfig.yaml file
 	if err != nil {             // Handle errors reading the config file
-		fmt.Println("read config file error: \n", err)
+		fmt.Println("read config file error: ", err)
 		os.Exit(-1)
 	}
 

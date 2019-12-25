@@ -169,9 +169,9 @@ func (srv *UserService) UserList(ctx *gin.Context) {
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
-	usrs := &model.User{}
+	usrs := []*model.User{}
 	offset := req.Page * req.PageSize
-	if err := srv.DB.Offset(offset).Limit(req.PageSize).Find(usrs).Error; err != nil {
+	if err := srv.DB.Offset(offset).Limit(req.PageSize).Find(&usrs).Error; err != nil {
 		logger.Error(err)
 		ginutil.Response(ctx, GET_FAIL, err.Error())
 		return
@@ -224,6 +224,22 @@ func (srv *UserService) UserUpdate(ctx *gin.Context) {
 		return
 	}
 
+	oldusr := &model.User{}
+	if err := srv.DB.Where(&model.User{
+		Model: model.Model{
+			ID: usr.ID,
+		},
+	}).First(oldusr).Error; err != nil {
+		logger.Error(err)
+		ginutil.Response(ctx, UPDATE_FAIL, err.Error())
+		return
+	}
+
+	usr.CreatedAt = oldusr.CreatedAt
+	usr.Password = oldusr.Password
+	usr.Telephone = oldusr.Telephone
+	usr.Email = oldusr.Email
+
 	if err := srv.DB.Model(&model.User{
 		Model: model.Model{
 			ID: usr.ID,
@@ -234,17 +250,7 @@ func (srv *UserService) UserUpdate(ctx *gin.Context) {
 		return
 	}
 
-	nusr := &model.User{}
-	if err := srv.DB.Where(&model.User{
-		Model: model.Model{
-			ID: usr.ID,
-		},
-	}).First(nusr).Error; err != nil {
-		ginutil.Response(ctx, UPDATE_FAIL, err.Error())
-	} else {
-		ginutil.Response(ctx, nil, nusr)
-	}
-
+	ginutil.Response(ctx, nil, usr)
 	return
 }
 
