@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/elvis88/baas/common/ginutil"
 	"github.com/elvis88/baas/core/model"
 	srv "github.com/elvis88/baas/core/service"
 	"github.com/gin-gonic/gin"
@@ -40,6 +41,7 @@ func Server(router *gin.Engine, db *gorm.DB) error {
 		},
 	}
 
+	ginutil.UseSession(router)
 	apiv1 := router.Group("api/v1")
 	for _, service := range services {
 		service.Register(apiv1)

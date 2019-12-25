@@ -8,6 +8,7 @@ import (
 
 var logger = log.GetLogger("baas", log.DEBUG)
 
+const headerTokenKey = "Authorization"
 const TokenKey = "baas user secret"
 
 var (

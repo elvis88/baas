@@ -6,9 +6,9 @@ import (
 
 type Model struct {
 	ID        uint       `json:"id" gorm:"primary_key"`
-	CreatedAt time.Time  `json:"created"`
-	UpdatedAt time.Time  `json:"updated"`
-	DeletedAt *time.Time `json:"deleted" sql:"index"`
+	CreatedAt time.Time  `json:"created,omitempty"`
+	UpdatedAt time.Time  `json:"updated,omitempty"`
+	DeletedAt *time.Time `json:"deleted,omitempty" sql:"index"`
 }
 
 // User 用户表
@@ -18,8 +18,8 @@ type User struct {
 	Name      string `json:"name" gorm:"type:varchar(100);not null;unique"`
 	Password  string `json:"pwd" gorm:"not null"`
 	Nick      string `json:"nick" gorm:"not null"`
-	Email     string `json:"email"`
-	Telephone string `json:"tel" gorm:"column:tel"`
+	Email     string `json:"email;unique"`
+	Telephone string `json:"tel" gorm:"column:tel;unique"`
 
 	Role          []Role          `json:"-" gorm:"many2many:user_role;"`
 	Chain         []Chain         `json:"-"`

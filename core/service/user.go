@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/elvis88/baas/common/ginutil"
@@ -19,8 +18,8 @@ type UserService struct {
 
 // LoginRequest 登陆请求参数
 type LoginRequest struct {
-	UserName  string `json:"username"`
-	Password  string `json:"password"`
+	UserName  string `json:"name"`
+	Password  string `json:"pwd"`
 	Telephone string `json:"phone"`
 	Email     string `json:"email"`
 	Code      string `json:"code"`
@@ -51,7 +50,7 @@ func (srv *UserService) UserLogin(ctx *gin.Context) {
 		}
 		if val, err := password.Validate(login.Password, usr.Password); !val {
 			logger.Error(err)
-			ginutil.Response(ctx, PASSWORD_WRONG, err.Error())
+			ginutil.Response(ctx, PASSWORD_WRONG, nil)
 			return
 		}
 	} else if len(login.Email) != 0 { // 邮箱验证码登陆
@@ -96,14 +95,14 @@ func (srv *UserService) UserLogin(ctx *gin.Context) {
 
 // UserLogout 退出登陆
 func (srv *UserService) UserLogout(ctx *gin.Context) {
-	token := ctx.GetHeader("X-Token")
+	token := ctx.GetHeader(headerTokenKey)
 	ginutil.RemoveSession(ctx, token)
 	ginutil.Response(ctx, nil, nil)
 }
 
 // UserAuthorize 用户验证
 func (srv *UserService) UserAuthorize(ctx *gin.Context) {
-	token := ctx.GetHeader("X-Token")
+	token := ctx.GetHeader(headerTokenKey)
 	session := ginutil.GetSession(ctx, token)
 	if nil == session {
 		ginutil.Response(ctx, TOKEN_NOT_EXIST, nil)
@@ -141,7 +140,7 @@ func (srv *UserService) UserAuthorize(ctx *gin.Context) {
 
 // UserInfo 用户信息
 func (srv *UserService) UserInfo(ctx *gin.Context) {
-	token := ctx.GetHeader("X-Token")
+	token := ctx.GetHeader(headerTokenKey)
 	session := ginutil.GetSession(ctx, token)
 	usr := &model.User{}
 	srv.DB.Where(&model.User{
@@ -169,9 +168,9 @@ func (srv *UserService) UserList(ctx *gin.Context) {
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
-	usrs := &model.User{}
+	usrs := []*model.User{}
 	offset := req.Page * req.PageSize
-	if err := srv.DB.Offset(offset).Limit(req.PageSize).Find(usrs).Error; err != nil {
+	if err := srv.DB.Offset(offset).Limit(req.PageSize).Find(&usrs).Error; err != nil {
 		logger.Error(err)
 		ginutil.Response(ctx, GET_FAIL, err.Error())
 		return
@@ -188,6 +187,15 @@ func (srv *UserService) UserAdd(ctx *gin.Context) {
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
+
+	password, err := password.CryTo(usr.Password, 12, "default")
+	if err != nil {
+		logger.Error(err)
+		ginutil.Response(ctx, ADD_FAIL, err.Error())
+		return
+	}
+	usr.Password = password
+
 	if err := srv.DB.Create(&usr).Error; err != nil {
 		logger.Error(err)
 		ginutil.Response(ctx, ADD_FAIL, err.Error())
@@ -205,7 +213,18 @@ func (srv *UserService) UserDelete(ctx *gin.Context) {
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
-	fmt.Println("delete", usr.ID)
+
+	oldusr := &model.User{}
+	if err := srv.DB.Where(&model.User{
+		Model: model.Model{
+			ID: usr.ID,
+		},
+	}).First(oldusr).Error; err != nil {
+		logger.Error(err)
+		ginutil.Response(ctx, DELETE_FAIL, err.Error())
+		return
+	}
+
 	if err := srv.DB.Unscoped().Delete(&usr).Error; err != nil {
 		logger.Error(err)
 		ginutil.Response(ctx, DELETE_FAIL, err.Error())
@@ -224,6 +243,22 @@ func (srv *UserService) UserUpdate(ctx *gin.Context) {
 		return
 	}
 
+	oldusr := &model.User{}
+	if err := srv.DB.Where(&model.User{
+		Model: model.Model{
+			ID: usr.ID,
+		},
+	}).First(oldusr).Error; err != nil {
+		logger.Error(err)
+		ginutil.Response(ctx, UPDATE_FAIL, err.Error())
+		return
+	}
+
+	usr.CreatedAt = oldusr.CreatedAt
+	usr.Password = oldusr.Password
+	usr.Telephone = oldusr.Telephone
+	usr.Email = oldusr.Email
+
 	if err := srv.DB.Model(&model.User{
 		Model: model.Model{
 			ID: usr.ID,
@@ -234,17 +269,7 @@ func (srv *UserService) UserUpdate(ctx *gin.Context) {
 		return
 	}
 
-	nusr := &model.User{}
-	if err := srv.DB.Where(&model.User{
-		Model: model.Model{
-			ID: usr.ID,
-		},
-	}).First(nusr).Error; err != nil {
-		ginutil.Response(ctx, UPDATE_FAIL, err.Error())
-	} else {
-		ginutil.Response(ctx, nil, nusr)
-	}
-
+	ginutil.Response(ctx, nil, usr)
 	return
 }
 
@@ -255,11 +280,11 @@ func (srv *UserService) UserChangePWD(ctx *gin.Context) {
 
 // Register ...
 func (srv *UserService) Register(api *gin.RouterGroup) {
-	api.POST("/user/register", srv.UserAdd)
+	api.POST("/user/add", srv.UserAdd)
 	api.POST("/user/login", srv.UserLogin)
-	api.POST("/user/logout", srv.UserLogout)
 	//认证校验
-	//api.Use(srv.UserAuthorize)
+	api.Use(srv.UserAuthorize)
+	api.POST("/user/logout", srv.UserLogout)
 	api.POST("/user/info", srv.UserInfo)
 	api.POST("/user/list", srv.UserList)
 	api.POST("/user/delete", srv.UserDelete)
