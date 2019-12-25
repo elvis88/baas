@@ -22,6 +22,13 @@ type LoginRequest struct {
 	Code      string `json:"code"`
 }
 
+var (
+	LOGIN_NAME_NOT_EXIST = errors.New("用户不存在")
+	LOGIN_PASSWORD_WRONG = errors.New("密码不正确")
+	LOGIN_CODE_WRONG     = errors.New("验证码不正确")
+	LOGIN_UNKOWN_TYPE    = errors.New("未知登陆方式")
+)
+
 // UserLogin 登陆
 func (srv *UserService) UserLogin(ctx *gin.Context) {
 	login := &LoginRequest{}
@@ -39,7 +46,7 @@ func (srv *UserService) UserLogin(ctx *gin.Context) {
 	} else if len(login.Telephone) != 0 {
 		// 手机验证码登陆
 	}
-	ginutil.Response(ctx, errors.New("unkown login type"), nil)
+	ginutil.Response(ctx, LOGIN_UNKOWN_TYPE, nil)
 	return
 }
 
@@ -78,15 +85,21 @@ func (srv *UserService) UserUpdate(ctx *gin.Context) {
 
 }
 
+// UserChangePWD 修改密码
+func (srv *UserService) UserChangePWD(ctx *gin.Context) {
+
+}
+
 // Register ...
 func (srv *UserService) Register(api *gin.RouterGroup) {
+	api.POST("/user/register", srv.UserAdd)
 	api.POST("/user/login", srv.UserLogin)
 	api.POST("/user/logout", srv.UserLogout)
 	//认证校验
 	api.Use(srv.UserAuthorize)
 	api.GET("/user/info", srv.UserInfo)
 	api.GET("/user/list", srv.UserList)
-	api.POST("/user/add", srv.UserAdd)
 	api.POST("/user/delete", srv.UserDelete)
 	api.POST("/user/update", srv.UserUpdate)
+	api.POST("/user/changepwd", srv.UserChangePWD)
 }
