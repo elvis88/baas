@@ -1,4 +1,7 @@
 baas:
+    dbengine: sqlite3
+    sqlite3:
+      root: baas.db
     mysql:
       user: root
       password: 123456
