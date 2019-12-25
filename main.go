@@ -8,7 +8,6 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/elvis88/baas/common/ginutil"
 	"github.com/elvis88/baas/common/log"
 	"github.com/elvis88/baas/core"
 	"github.com/gin-gonic/gin"
@@ -58,9 +57,7 @@ func main() {
 	}
 
 	// 创建服务
-	router := gin.New()
-	router.Use(ginutil.UseLogger(router, logger.Debugf))
-	router.Use(gin.Recovery())
+	router := gin.Default()
 
 	// 注册服务
 	core.Server(router, db)

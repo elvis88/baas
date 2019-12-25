@@ -1,6 +1,9 @@
 package model
 
 import (
+	"errors"
+
+	"github.com/elvis88/baas/common/ginutil"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 )
@@ -10,9 +13,34 @@ type UserService struct {
 	DB *gorm.DB
 }
 
+// LoginRequest 登陆请求参数
+type LoginRequest struct {
+	UserName  string `json:"username"`
+	Password  string `json:"password"`
+	Telephone string `json:"phone"`
+	Email     string `json:"email"`
+	Code      string `json:"code"`
+}
+
 // UserLogin 登陆
 func (srv *UserService) UserLogin(ctx *gin.Context) {
+	login := &LoginRequest{}
+	if err := ctx.ShouldBindJSON(login); err != nil {
+		ginutil.Response(ctx, err, nil)
+		return
+	}
 
+	if len(login.UserName) != 0 {
+		// 密码登陆
+
+	} else if len(login.Email) != 0 {
+		// 邮箱验证码登陆
+
+	} else if len(login.Telephone) != 0 {
+		// 手机验证码登陆
+	}
+	ginutil.Response(ctx, errors.New("unkown login type"), nil)
+	return
 }
 
 // UserLogout 退出登陆
