@@ -32,16 +32,10 @@ func (srv *ChainService) Register(router *gin.RouterGroup) {
 // 添加链
 func (srv *ChainService) ChainAdd(c *gin.Context) {
 	var err error
-	var chainInfo = &ChainInfo{}
-	if err = c.ShouldBindJSON(chainInfo); nil != err {
+	var chain = &model.Chain{}
+	if err = c.ShouldBindJSON(chain); nil != err {
 		ginutil.Response(c, REQUEST_PARAM_INVALID, nil)
 		return
-	}
-
-	chain := &model.Chain{
-		Name: chainInfo.Name,
-		UserID: chainInfo.UserID,
-		Description: chainInfo.Desc,
 	}
 
 	if err = srv.DB.Create(chain).Error; nil != err {
@@ -56,14 +50,10 @@ func (srv *ChainService) ChainAdd(c *gin.Context) {
 // 获取链列表
 func (srv *ChainService) ChainList(c *gin.Context) {
 	var err error
-	var chainInfo = &ChainInfo{}
-	if err = c.ShouldBindJSON(chainInfo); nil != err {
+	var chain = &model.Chain{}
+	if err = c.ShouldBindJSON(chain); nil != err {
 		ginutil.Response(c, REQUEST_PARAM_INVALID, nil)
 		return
-	}
-
-	chain := &model.Chain{
-		UserID: chainInfo.UserID,
 	}
 
 	var chains []*model.Chain
@@ -79,8 +69,8 @@ func (srv *ChainService) ChainList(c *gin.Context) {
 // 链删除
 func (srv *ChainService)ChainDelete(c *gin.Context) {
 	var err error
-	var chainInfo = &ChainInfo{}
-	if err = c.ShouldBindJSON(chainInfo); nil != err {
+	var chain = &model.Chain{}
+	if err = c.ShouldBindJSON(chain); nil != err {
 		ginutil.Response(c, REQUEST_PARAM_INVALID, nil)
 		return
 	}
@@ -88,7 +78,7 @@ func (srv *ChainService)ChainDelete(c *gin.Context) {
 	// 开启事务
 	tx := srv.DB.Begin()
 
-	if err := tx.Unscoped().Where("user_id = ? and chain_id = ?", chainInfo.UserID, chainInfo.ID).Delete(model.ChainDeploy{}).Error; nil != err {
+	if err := tx.Unscoped().Where("user_id = ? and chain_id = ?", chain.UserID, chain.ID).Delete(model.ChainDeploy{}).Error; nil != err {
 		tx.Rollback()
 		ginutil.Response(c, err, nil)
 		return
@@ -96,7 +86,7 @@ func (srv *ChainService)ChainDelete(c *gin.Context) {
 
 
 	// 删除chain的数据
-	deleteDB := tx.Unscoped().Where("user_id = ?", chainInfo.UserID).Delete(model.Chain{})
+	deleteDB := tx.Unscoped().Where("id = ?", chain.UserID).Delete(model.Chain{})
 	if err := deleteDB.Error; nil != err {
 		tx.Rollback()
 		ginutil.Response(c, DELETE_FAIL, nil)
@@ -105,6 +95,7 @@ func (srv *ChainService)ChainDelete(c *gin.Context) {
 
 	if 0 == deleteDB.RowsAffected {
 		ginutil.Response(c, CHAINID_NOT_EXIST, nil)
+		return
 	}
 
 	// 结束事务
@@ -117,21 +108,16 @@ func (srv *ChainService)ChainDelete(c *gin.Context) {
 // 链更新
 func (srv *ChainService) ChainUpdate(c *gin.Context) {
 	var err error
-	var chainInfo = &ChainInfo{}
-	if err = c.ShouldBindJSON(chainInfo); nil != err {
+	var chain = &model.Chain{}
+	if err = c.ShouldBindJSON(chain); nil != err {
 		ginutil.Response(c, REQUEST_PARAM_INVALID, nil)
 		return
 	}
-	chain := &model.Chain{}
-	chain.ID = chainInfo.ID
 
-	result := &model.Chain{
-		Name: chainInfo.Name,
-		UserID: chainInfo.UserID,
-		Description: chainInfo.Desc,
-	}
+	result := &model.Chain{}
+	result.ID = chain.ID
 
-	updateDB := srv.DB.Model(&chain).Updates(result)
+	updateDB := srv.DB.Model(result).Updates(chain)
 	if err = updateDB.Error; nil != err {
 		ginutil.Response(c, err, nil)
 		return
@@ -141,5 +127,5 @@ func (srv *ChainService) ChainUpdate(c *gin.Context) {
 		return
 	}
 
-	ginutil.Response(c, nil, chain)
+	ginutil.Response(c, nil, result)
 }
