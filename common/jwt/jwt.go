@@ -30,7 +30,11 @@ func ParseToken(tokenString string, key string) (interface{}, bool) {
 	if err == nil {
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if ok && token.Valid {
-			return claims, true
+			m := make(map[string]interface{})
+			for index, val := range claims {
+				m[index] = val
+			}
+			return m, true
 		}
 	}
 	return nil, false
