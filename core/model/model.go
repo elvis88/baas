@@ -8,17 +8,17 @@ import (
 type User struct {
 	gorm.Model
 
-	Name  string `gorm:"type:varchar(100);not null;unique"`
-	Pwd   string `gorm:"not null"`
-	Nick  string `gorm:"not null"`
-	Email string
-	Tele  string
+	Name      string `json:"name" gorm:"type:varchar(100);not null;unique"`
+	Password  string `json:"pwd" gorm:"not null"`
+	Nick      string `json:"nick" gorm:"not null"`
+	Email     string `json:"email"`
+	Telephone string `json:"tel" gorm:"column:tel"`
 
-	Role          []Role `gorm:"many2many:user_role;"`
-	Chain         []Chain
-	ChainDeploy   []ChainDeploy
-	Browser       []Browser
-	BrowserDeploy []BrowserDeploy
+	Role          []Role          `json:"-" gorm:"many2many:user_role;"`
+	Chain         []Chain         `json:"-"`
+	ChainDeploy   []ChainDeploy   `json:"-"`
+	Browser       []Browser       `json:"-"`
+	BrowserDeploy []BrowserDeploy `json:"-"`
 }
 
 // Role 角色表

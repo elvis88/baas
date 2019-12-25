@@ -16,9 +16,9 @@ type responseData struct {
 func Response(ctx *gin.Context, err error, data interface{}) {
 	if data == nil {
 		if err != nil {
-			data = "failed"
+			data = false
 		} else {
-			data = "succeed"
+			data = true
 		}
 	}
 	resp := &responseData{

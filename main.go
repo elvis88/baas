@@ -60,7 +60,9 @@ func main() {
 	router := gin.Default()
 
 	// 注册服务
-	core.Server(router, db)
+	if err := core.Server(router, db); err != nil {
+		logger.Error(err)
+	}
 
 	// 设置服务端口
 	servicePort := viper.GetString("baas.config.port")

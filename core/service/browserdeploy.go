@@ -1,4 +1,4 @@
-package model
+package service
 
 import (
 	"github.com/gin-gonic/gin"
@@ -27,7 +27,7 @@ func (srv *BrowserDeployService) BrowserDeployUpdate(ctx *gin.Context) {
 
 // Register ...
 func (srv *BrowserDeployService) Register(api *gin.RouterGroup) {
-	api.POST("/chaindeploy/add", srv.BrowserDeployAdd)
-	api.POST("/chaindeploy/delete", srv.BrowserDeployDelete)
-	api.POST("/chaindeploy/update", srv.BrowserDeployUpdate)
+	api.POST("/browserdeploy/add", srv.BrowserDeployAdd)
+	api.POST("/browserdeploy/delete", srv.BrowserDeployDelete)
+	api.POST("/browserdeploy/update", srv.BrowserDeployUpdate)
 }

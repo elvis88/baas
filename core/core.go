@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/elvis88/baas/core/model"
 	srv "github.com/elvis88/baas/core/service"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
@@ -11,7 +12,13 @@ type service interface {
 }
 
 // Server 提供服务
-func Server(router *gin.Engine, db *gorm.DB) {
+func Server(router *gin.Engine, db *gorm.DB) error {
+	if err := db.AutoMigrate(
+		&model.User{}, model.Role{},
+		model.Chain{}, model.ChainDeploy{},
+		model.Browser{}, model.BrowserDeploy{}).Error; err != nil {
+		return err
+	}
 	services := []service{
 		&srv.UserService{
 			DB: db,
@@ -37,4 +44,5 @@ func Server(router *gin.Engine, db *gorm.DB) {
 	for _, service := range services {
 		service.Register(apiv1)
 	}
+	return nil
 }
