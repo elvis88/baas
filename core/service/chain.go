@@ -1,274 +1,131 @@
-package model
+package service
 
 import (
-	"encoding/json"
-	"io/ioutil"
-	"net/http"
-
+	"github.com/elvis88/baas/common/ginutil"
 	"github.com/elvis88/baas/core/model"
-	"github.com/elvis88/baas/db"
 	"github.com/gin-gonic/gin"
+	"github.com/jinzhu/gorm"
 )
 
 // ChainService 区块链配置表
 type ChainService struct {
+	DB *gorm.DB
+}
+
+type ChainInfo struct {
+	ID 		uint 	`json:"id"`
+	Name 	string 	`json:"chainName"`
+	UserID  uint	`json:"userID"`
+	Desc    string  `json:"description"`
 }
 
 // Register
-func (srv *ChainService) Register(router *gin.Engine) {
+func (srv *ChainService) Register(router *gin.RouterGroup) {
 	chain := router.Group("/chain")
-	chain.POST("/add", AddChain)
-	chain.POST("/gets", GetChains)
-	chain.POST("/delete", DeleteChain)
-	chain.POST("/update", UpdateChain)
+	chain.POST("/add", srv.ChainAdd)
+	chain.POST("/list", srv.ChainList)
+	chain.POST("/delete", srv.ChainDelete)
+	chain.POST("/update", srv.ChainUpdate)
 }
 
-func getParams(c *gin.Context) (map[string]interface{}, error) {
-	// 获取请求主题
-	body, err := ioutil.ReadAll(c.Request.Body)
-	if nil != err {
-		return nil, err
-	}
-
-	var params map[string]interface{}
-	err = json.Unmarshal(body, &params)
-	if nil != err {
-		return nil, err
-	}
-
-	return params, nil
-}
-
-// {"name":"ft", "userID":1, "description":"ft的私链"}
-func AddChain(c *gin.Context) {
-	// 验证身份
-
-	// 获取请求主体
-	params, err := getParams(c)
-	if nil != err {
-		c.JSON(http.StatusOK, gin.H{
-			"code": -32000,
-			"msg":  err.Error(),
-		})
+// {"chainName":"ft", "userID":1, "description":"ft的私链"}
+// 添加链
+func (srv *ChainService) ChainAdd(c *gin.Context) {
+	var err error
+	var chain = &model.Chain{}
+	if err = c.ShouldBindJSON(chain); nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, nil)
 		return
 	}
 
-	// 获取主体参数
-	var chainName string
-	var userID    float64
-	var desc      string
-	var ok bool
-	if chainName, ok = params["name"].(string); !ok {
-		c.JSON(http.StatusOK, gin.H{
-			"code": -32000,
-			"msg":  "body params format error",
-		})
+	if err = srv.DB.Create(chain).Error; nil != err {
+		ginutil.Response(c, err, nil)
 		return
 	}
 
-	if userID, ok = params["userID"].(float64); !ok {
-		c.JSON(http.StatusOK, gin.H{
-			"code": -32000,
-			"msg":  "body params format error",
-		})
-		return
-	}
-
-	if desc, ok = params["description"].(string); !ok {
-		c.JSON(http.StatusOK, gin.H{
-			"code": -32000,
-			"msg":  "body params format error",
-		})
-		return
-	}
-
-	// install 链数据
-	var chain = &model.Chain{
-		Name: chainName,
-		UserID: uint(userID),
-		Description: desc,
-	}
-
-	if err = db.DB.Create(chain).Error; nil != err {
-		c.JSON(http.StatusOK, gin.H{
-			"code": -32000,
-			"msg":  err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"result":true,
-	})
+	ginutil.Response(c, nil, chain)
 }
 
 // {"userID":1}
-func GetChains(c *gin.Context) {
-	// 验证身份
-
-	// 获取请求主题
-	params, err := getParams(c)
-	if nil != err {
-		c.JSON(http.StatusOK, gin.H{
-			"code": -32000,
-			"msg":  err.Error(),
-		})
-		return
-	}
-
-	// 获取账户id
-	var userID float64
-	var ok bool
-	if userID, ok = params["userID"].(float64); !ok {
-		c.JSON(http.StatusOK, gin.H{
-			"code": -32000,
-			"msg":  "body params format error",
-		})
+// 获取链列表
+func (srv *ChainService) ChainList(c *gin.Context) {
+	var err error
+	var chain = &model.Chain{}
+	if err = c.ShouldBindJSON(chain); nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, nil)
 		return
 	}
 
 	var chains []*model.Chain
-	if err = db.DB.Where("user_id = ?", uint(userID)).Find(&chains).Error; nil != err {
-		c.JSON(http.StatusOK, gin.H{
-			"code":-32000,
-			"msg": err.Error(),
-		})
+	if err = srv.DB.Where(chain).Find(&chains).Error; nil != err {
+		ginutil.Response(c, err, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"result": chains,
-	})	
+	ginutil.Response(c, nil, chains)
 }
 
 // {"userID":1, "chainID": 1}
-func DeleteChain(c *gin.Context) {
-	// 验证身份
-	
-	// 获取请求主题
-	params, err := getParams(c)
-	if nil != err {
-		c.JSON(http.StatusOK, gin.H{
-			"code": -32000,
-			"msg":  err.Error(),
-		})
-		return
-	}
-
-	// 获取账户id 链id
-	var userID float64
-	var chainID float64
-	var ok bool
-	if userID, ok = params["userID"].(float64); !ok {
-		c.JSON(http.StatusOK, gin.H{
-			"code": -32000,
-			"msg":  "body params format error",
-		})
-		return
-	}
-
-	if chainID, ok = params["chainID"].(float64); !ok {
-		c.JSON(http.StatusOK, gin.H{
-			"code": -32000,
-			"msg":  "body params format error",
-		})
+// 链删除
+func (srv *ChainService)ChainDelete(c *gin.Context) {
+	var err error
+	var chain = &model.Chain{}
+	if err = c.ShouldBindJSON(chain); nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, nil)
 		return
 	}
 
 	// 开启事务
-	tx := db.DB.Begin()
+	tx := srv.DB.Begin()
 
-	if err := tx.Where("user_id = ? and chain_id = ?", uint(userID), uint(chainID)).Delete(model.ChainDeploy{}).Error; nil != err {
+	if err := tx.Unscoped().Where("user_id = ? and chain_id = ?", chain.UserID, chain.ID).Delete(model.ChainDeploy{}).Error; nil != err {
 		tx.Rollback()
-		c.JSON(http.StatusOK, gin.H{
-			"code":-32000,
-			"msg": err.Error(),
-		})
+		ginutil.Response(c, err, nil)
 		return
 	}
 
 
 	// 删除chain的数据
-	if err := tx.Where("user_id = ?", uint(userID)).Delete(model.Chain{}).Error; nil != err {
+	deleteDB := tx.Unscoped().Where("id = ?", chain.UserID).Delete(model.Chain{})
+	if err := deleteDB.Error; nil != err {
 		tx.Rollback()
-		c.JSON(http.StatusOK, gin.H{
-			"code":-32000,
-			"msg": err.Error(),
-		})
+		ginutil.Response(c, DELETE_FAIL, nil)
+		return
+	}
+
+	if 0 == deleteDB.RowsAffected {
+		ginutil.Response(c, CHAINID_NOT_EXIST, nil)
 		return
 	}
 
 	// 结束事务
 	tx.Commit()
-	c.JSON(http.StatusOK, gin.H{
-		"result":true,
-	})
+	ginutil.Response(c, nil, nil)
 }
 
 
 // {"chainID":4, "name":"ft", "userID":1, "description":"ft的私链1"}
-func UpdateChain(c *gin.Context) {
-	// 验证身份
-
-	// 获取请求主题
-	params, err := getParams(c)
-	if nil != err {
-		c.JSON(http.StatusOK, gin.H{
-			"code": -32000,
-			"msg":  err.Error(),
-		})
-		return
-	}
-
-	var chainID   float64
-	var chainName string
-	var userID    float64
-	var desc      string
-	var ok bool
-
-	if chainID, ok = params["chainID"].(float64); !ok {
-		c.JSON(http.StatusOK, gin.H{
-			"code": -32000,
-			"msg":  "body params format error",
-		})
-		return
-	}
-	if chainName, ok = params["name"].(string); !ok {
-		c.JSON(http.StatusOK, gin.H{
-			"code": -32000,
-			"msg":  "body params format error",
-		})
-		return
-	}
-
-	if userID, ok = params["userID"].(float64); !ok {
-		c.JSON(http.StatusOK, gin.H{
-			"code": -32000,
-			"msg":  "body params format error",
-		})
-		return
-	}
-
-	if desc, ok = params["description"].(string); !ok {
-		c.JSON(http.StatusOK, gin.H{
-			"code": -32000,
-			"msg":  "body params format error",
-		})
-		return
-	}
-
+// 链更新
+func (srv *ChainService) ChainUpdate(c *gin.Context) {
+	var err error
 	var chain = &model.Chain{}
-	chain.ID = uint(chainID)
-
-	if err = db.DB.Model(&chain).Updates(&model.Chain{Name: chainName, UserID: uint(userID),Description: desc,}).Error; nil != err {
-		c.JSON(http.StatusOK, gin.H{
-			"code":-32000,
-			"msg": err.Error(),
-		})
+	if err = c.ShouldBindJSON(chain); nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"result": true,
-	})
+	result := &model.Chain{}
+	result.ID = chain.ID
+
+	updateDB := srv.DB.Model(result).Updates(chain)
+	if err = updateDB.Error; nil != err {
+		ginutil.Response(c, err, nil)
+		return
+	}
+	if 0 == updateDB.RowsAffected {
+		ginutil.Response(c, UPDATE_FAIL, nil)
+		return
+	}
+
+	ginutil.Response(c, nil, result)
 }

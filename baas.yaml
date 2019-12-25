@@ -1,10 +1,10 @@
 baas:
-    dbengine: sqlite3
+    dbengine: mysql
     sqlite3:
       root: baas.db
     mysql:
       user: root
-      password: 123456
+      password: humengya
       ip: 127.0.0.1
       port: 3306
       database: baas

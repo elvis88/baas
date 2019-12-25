@@ -43,4 +43,6 @@ var (
 	NAME_INVALID  = errors.New("无效用户名")
 	EMAIL_INVALID = errors.New("无效邮箱")
 	TEL_INVALID   = errors.New("无效手机号")
+
+	CHAINID_NOT_EXIST = errors.New("链不存在")
 )
