@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/elvis88/baas/common/ginutil"
+	"github.com/elvis88/baas/common/password"
 	"github.com/elvis88/baas/core/model"
 	srv "github.com/elvis88/baas/core/service"
 	"github.com/gin-gonic/gin"
@@ -50,9 +51,18 @@ func Server(router *gin.Engine, db *gorm.DB) error {
 			adminRole,
 		},
 	}
+
+	// Admin 密码加密
+	pwd, err := password.CryTo(adminUsr.Password, 12, "default")
+	if err != nil {
+		return err
+	}
+	adminUsr.Password = pwd
+
 	usrs := []*model.User{
 		adminUsr,
 	}
+
 	for _, usr := range usrs {
 		if err := db.FirstOrCreate(usr, &model.User{
 			Name: usr.Name,

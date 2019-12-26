@@ -47,5 +47,6 @@ var (
 	ROLE_WRONG              = errors.New("权限不正确")
 
 	CHAINID_NOT_EXIST    = errors.New("链不存在")
+	CHAINID_DEPLOY_NOT_EXIST = errors.New("节点不存在")
 	PARAMS_IS_NOT_ENOUGH = errors.New("参数不足")
 )

@@ -18,9 +18,6 @@ func (srv *ChainDeployService) getAndCheckParams(ctx *gin.Context) (cDeploy *mod
 		return nil, err
 	}
 
-	if chainDeploy.UserID  == 0  || chainDeploy.ChainID == 0 {
-		return nil, PARAMS_IS_NOT_ENOUGH
-	}
 	return chainDeploy, nil
 }
 
@@ -32,7 +29,12 @@ func (srv *ChainDeployService) ChainDeployAdd(ctx *gin.Context) {
 		return
 	}
 
-	if false == Verification(ctx, chainDeploy.UserID) {
+	if chainDeploy.UserID  == 0  || chainDeploy.ChainID == 0 {
+		ginutil.Response(ctx, PARAMS_IS_NOT_ENOUGH, nil)
+		return
+	}
+
+	if false == Verification(ctx, srv.DB, chainDeploy.UserID) {
 		return
 	}
 
@@ -51,7 +53,12 @@ func (srv *ChainDeployService) ChainDeployList(ctx *gin.Context) {
 		return
 	}
 
-	if false == Verification(ctx, chainDeploy.UserID) {
+	if chainDeploy.UserID  == 0  || chainDeploy.ChainID == 0 {
+		ginutil.Response(ctx, PARAMS_IS_NOT_ENOUGH, nil)
+		return
+	}
+
+	if false == Verification(ctx, srv.DB, chainDeploy.UserID) {
 		return
 	}
 
@@ -72,7 +79,17 @@ func (srv *ChainDeployService) ChainDeployDelete(ctx *gin.Context) {
 		return
 	}
 
-	if false == Verification(ctx, chainDeploy.UserID) {
+	if chainDeploy.ID == 0 {
+		ginutil.Response(ctx, PARAMS_IS_NOT_ENOUGH, nil)
+		return
+	}
+
+	if err = srv.DB.First(chainDeploy).Error; nil != err {
+		ginutil.Response(ctx, CHAINID_DEPLOY_NOT_EXIST, nil)
+		return
+	}
+
+	if false == Verification(ctx, srv.DB, chainDeploy.UserID) {
 		return
 	}
 
@@ -87,30 +104,46 @@ func (srv *ChainDeployService) ChainDeployDelete(ctx *gin.Context) {
 
 // ChainDeployUpdate 修改
 func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
+	// 获取主体信息
 	chainDeploy, err := srv.getAndCheckParams(ctx)
 	if nil != err {
 		ginutil.Response(ctx, err, nil)
 		return
 	}
 
-	if false == Verification(ctx, chainDeploy.UserID) {
+	// 如果实例id不存在则返回
+	if chainDeploy.ID == 0 {
+		ginutil.Response(ctx, PARAMS_IS_NOT_ENOUGH, nil)
 		return
 	}
 
-	chainDeployResult := &model.ChainDeploy{}
-	chainDeployResult.ID = chainDeploy.ID
+	// 获取该ID对应的数据
+	chainDeployVerify := &model.ChainDeploy{Model: model.Model{ID:chainDeploy.ID}}
+	if err = srv.DB.First(chainDeployVerify).Error; nil != err {
+		ginutil.Response(ctx, CHAINID_DEPLOY_NOT_EXIST, nil)
+		return
+	}
 
-	updateDB := srv.DB.Model(&chainDeployResult).Updates(chainDeploy)
+	// 验证用户是否有修改权限
+	if false == Verification(ctx, srv.DB, chainDeployVerify.UserID) {
+		return
+	}
+
+	// 存储更新的结果
+	updateDB := srv.DB.Model(chainDeploy).Updates(&model.Chain{Name:chainDeploy.Name, Description:chainDeploy.Description})
 	if err = updateDB.Error; nil != err {
 		ginutil.Response(ctx, err, nil)
 		return
 	}
-	if 0 == updateDB.RowsAffected {
-		ginutil.Response(ctx, UPDATE_FAIL, nil)
+
+	// 获取最新链实例数据
+	if err = srv.DB.First(chainDeploy).Error; nil != err {
+		ginutil.Response(ctx, CHAINID_DEPLOY_NOT_EXIST, nil)
 		return
 	}
 
-	ginutil.Response(ctx, nil, chainDeployResult)
+	// 返回更新后的数据
+	ginutil.Response(ctx, nil, chainDeploy)
 }
 
 // Register ...
