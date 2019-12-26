@@ -41,6 +41,7 @@ var (
 	EMAIL_INVALID           = errors.New("无效邮箱")
 	TEL_INVALID             = errors.New("无效手机号")
 	CODE_UNKOWN_TYPE        = errors.New("未知发送方式")
+	CODE_SEND_FAIL          = errors.New("验证码发送失败")
 	CODE_CHANGE_AIM_INVALID = errors.New("无效修改验证码类型")
 	NOPERMISSION            = errors.New("权限不够")
 	ROLE_WRONG              = errors.New("权限不正确")
