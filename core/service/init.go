@@ -44,5 +44,6 @@ var (
 	CODE_CHANGE_AIM_INVALID = errors.New("无效修改验证码类型")
 	NOPERMISSION            = errors.New("权限不够")
 
-	CHAINID_NOT_EXIST = errors.New("链不存在")
+	CHAINID_NOT_EXIST     = errors.New("链不存在")
+	PARAMS_IS_NOT_ENOUGH  = errors.New("参数不足")
 )
