@@ -77,7 +77,6 @@ func (srv *ChainService) ChainAdd(c *gin.Context) {
 	}
 
 
-
 	if err = srv.DB.Create(chain).Error; nil != err {
 		ginutil.Response(c, err, nil)
 		return

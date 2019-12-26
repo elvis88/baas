@@ -12,12 +12,22 @@ type ChainDeployService struct {
 	DB *gorm.DB
 }
 
-// ChainDeployAdd 新增
-func (srv *ChainDeployService) ChainDeployAdd(ctx *gin.Context) {
-	var err error
+func (srv *ChainDeployService) getAndCheckParams(ctx *gin.Context) (cDeploy *model.ChainDeploy, err error) {
 	chainDeploy := &model.ChainDeploy{}
 	if err = ctx.ShouldBindJSON(chainDeploy); nil != err {
-		ginutil.Response(ctx, REQUEST_PARAM_INVALID, nil)
+		return nil, err
+	}
+
+	if chainDeploy.UserID  == 0  || chainDeploy.ChainID == 0 {
+		return nil, PARAMS_IS_NOT_ENOUGH
+	}
+}
+
+// ChainDeployAdd 新增
+func (srv *ChainDeployService) ChainDeployAdd(ctx *gin.Context) {
+	chainDeploy, err := srv.getAndCheckParams(ctx)
+	if nil != err {
+		ginutil.Response(ctx, err, nil)
 		return
 	}
 
@@ -34,10 +44,9 @@ func (srv *ChainDeployService) ChainDeployAdd(ctx *gin.Context) {
 }
 
 func (srv *ChainDeployService) ChainDeployList(ctx *gin.Context) {
-	var err error
-	chainDeploy := &model.ChainDeploy{}
-	if err = ctx.ShouldBindJSON(chainDeploy); nil != err {
-		ginutil.Response(ctx, REQUEST_PARAM_INVALID, nil)
+	chainDeploy, err := srv.getAndCheckParams(ctx)
+	if nil != err {
+		ginutil.Response(ctx, err, nil)
 		return
 	}
 
@@ -56,12 +65,12 @@ func (srv *ChainDeployService) ChainDeployList(ctx *gin.Context) {
 
 // ChainDeployDelete 删除
 func (srv *ChainDeployService) ChainDeployDelete(ctx *gin.Context) {
-	var err error
-	chainDeploy := &model.ChainDeploy{}
-	if err = ctx.ShouldBindJSON(chainDeploy); nil != err {
-		ginutil.Response(ctx, REQUEST_PARAM_INVALID, nil)
+	chainDeploy, err := srv.getAndCheckParams(ctx)
+	if nil != err {
+		ginutil.Response(ctx, err, nil)
 		return
 	}
+
 	if false == Verification(ctx, chainDeploy.UserID) {
 		return
 	}
@@ -77,12 +86,12 @@ func (srv *ChainDeployService) ChainDeployDelete(ctx *gin.Context) {
 
 // ChainDeployUpdate 修改
 func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
-	var err error
-	var chainDeploy = &model.ChainDeploy{}
-	if err = ctx.ShouldBindJSON(chainDeploy); nil != err {
-		ginutil.Response(ctx, REQUEST_PARAM_INVALID, nil)
+	chainDeploy, err := srv.getAndCheckParams(ctx)
+	if nil != err {
+		ginutil.Response(ctx, err, nil)
 		return
 	}
+
 	if false == Verification(ctx, chainDeploy.UserID) {
 		return
 	}
