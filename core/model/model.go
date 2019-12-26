@@ -32,6 +32,7 @@ type User struct {
 type Role struct {
 	Model
 
+	Key         string `gorm:"type:varchar(100);not null;unique"`
 	Name        string `gorm:"type:varchar(100);not null;unique"`
 	Description string `gorm:"column:desc"`
 }

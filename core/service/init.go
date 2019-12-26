@@ -43,7 +43,8 @@ var (
 	CODE_UNKOWN_TYPE        = errors.New("未知发送方式")
 	CODE_CHANGE_AIM_INVALID = errors.New("无效修改验证码类型")
 	NOPERMISSION            = errors.New("权限不够")
+	ROLE_WRONG              = errors.New("权限不正确")
 
-	CHAINID_NOT_EXIST     = errors.New("链不存在")
-	PARAMS_IS_NOT_ENOUGH  = errors.New("参数不足")
+	CHAINID_NOT_EXIST    = errors.New("链不存在")
+	PARAMS_IS_NOT_ENOUGH = errors.New("参数不足")
 )

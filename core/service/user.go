@@ -169,7 +169,7 @@ func (srv *UserService) UserInfo(ctx *gin.Context) {
 	token := ctx.GetHeader(headerTokenKey)
 	session := ginutil.GetSession(ctx, token)
 	usr := &model.User{}
-	srv.DB.Where(&model.User{
+	srv.DB.Preload("Roles").Where(&model.User{
 		Model: model.Model{
 			ID: session.(uint),
 		},
@@ -196,12 +196,12 @@ func (srv *UserService) UserList(ctx *gin.Context) {
 	usrs := []*model.User{}
 	offset := req.Page * req.PageSize
 	if has, cusr := srv.hasAdminRole(ctx); !has {
-		if err := srv.DB.Where(cusr).Offset(offset).Limit(req.PageSize).Find(&usrs).Error; err != nil {
+		if err := srv.DB.Preload("Roles").Where(cusr).Offset(offset).Limit(req.PageSize).Find(&usrs).Error; err != nil {
 			ginutil.Response(ctx, GET_FAIL, err.Error())
 			return
 		}
 	} else {
-		if err := srv.DB.Offset(offset).Limit(req.PageSize).Find(&usrs).Error; err != nil {
+		if err := srv.DB.Preload("Roles").Offset(offset).Limit(req.PageSize).Find(&usrs).Error; err != nil {
 			ginutil.Response(ctx, GET_FAIL, err.Error())
 			return
 		}
@@ -228,7 +228,7 @@ func (srv *UserService) UserAdd(ctx *gin.Context) {
 	usr.Password = password
 	userRole := &model.Role{}
 	if err := srv.DB.Where(&model.Role{
-		Name: "user",
+		Key: "user",
 	}).First(userRole).Error; err == nil {
 		usr.Roles = append(usr.Roles, userRole)
 	}
@@ -299,7 +299,49 @@ func (srv *UserService) UserUpdate(ctx *gin.Context) {
 		return
 	}
 
-	srv.DB.First(usr)
+	srv.DB.Preload("Roles").First(usr)
+	ginutil.Response(ctx, nil, usr)
+	return
+}
+
+// UpdateRoleRequest 修改权限
+type UpdateRoleRequest struct {
+	UserID uint   `json:"userid"`
+	Roles  string `json:"roles"`
+}
+
+// UserUpdateRole 修改权限
+func (srv *UserService) UserUpdateRole(ctx *gin.Context) {
+	req := &UpdateRoleRequest{}
+	if err := ctx.ShouldBindJSON(req); err != nil {
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
+		return
+	}
+
+	if has, _ := srv.hasAdminRole(ctx); !has {
+		ginutil.Response(ctx, NOPERMISSION, nil)
+		return
+	}
+
+	roles := []*model.Role{}
+	if err := srv.DB.Find(roles).Error; err != nil {
+		ginutil.Response(ctx, ROLE_WRONG, err)
+		return
+	}
+
+	usr := &model.User{
+		Roles: roles,
+	}
+	if err := srv.DB.Model(&model.User{
+		Model: model.Model{
+			ID: req.UserID,
+		},
+	}).Updates(usr).Error; err != nil {
+		ginutil.Response(ctx, UPDATE_FAIL, err)
+		return
+	}
+
+	srv.DB.Preload("Roles").First(usr)
 	ginutil.Response(ctx, nil, usr)
 	return
 }
@@ -363,7 +405,7 @@ func (srv *UserService) UserChangePWD(ctx *gin.Context) {
 		return
 	}
 
-	srv.DB.First(usr)
+	srv.DB.Preload("Roles").First(usr)
 	ginutil.Response(ctx, nil, usr)
 	return
 }
@@ -421,7 +463,7 @@ func (srv *UserService) UserChangeTel(ctx *gin.Context) {
 		return
 	}
 
-	srv.DB.First(usr)
+	srv.DB.Preload("Roles").First(usr)
 	ginutil.Response(ctx, nil, usr)
 	return
 }
@@ -479,7 +521,7 @@ func (srv *UserService) UserChangeEmail(ctx *gin.Context) {
 		return
 	}
 
-	srv.DB.First(usr)
+	srv.DB.Preload("Roles").First(usr)
 	ginutil.Response(ctx, nil, usr)
 	return
 }
@@ -591,9 +633,9 @@ func (srv *UserService) hasAdminRole(ctx *gin.Context) (bool, *model.User) {
 		},
 	}
 	roles := []*model.Role{}
-	srv.DB.Model(usr).Related(&roles)
+	srv.DB.Model(usr).Related(&roles, "Roles")
 	for _, role := range roles {
-		if strings.Compare(role.Name, "admin") == 0 {
+		if strings.Compare(role.Key, "admin") == 0 {
 			return true, usr
 		}
 	}
@@ -612,6 +654,7 @@ func (srv *UserService) Register(api *gin.RouterGroup) {
 	api.POST("/user/list", srv.UserList)
 	api.POST("/user/delete", srv.UserDelete)
 	api.POST("/user/update", srv.UserUpdate)
+	api.POST("/user/updaterole", srv.UserUpdateRole)
 	api.POST("/user/changepwd", srv.UserChangePWD)
 	api.POST("/user/changetel", srv.UserChangeTel)
 	api.POST("/user/changeemail", srv.UserChangeEmail)

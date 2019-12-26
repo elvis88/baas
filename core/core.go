@@ -22,11 +22,13 @@ func Server(router *gin.Engine, db *gorm.DB) error {
 	}
 	// 初始角色
 	adminRole := &model.Role{
-		Name:        "admin",
+		Key:         "admin",
+		Name:        "管理员",
 		Description: "超级管理员,拥有所有权限",
 	}
 	userRole := &model.Role{
-		Name:        "user",
+		Key:         "user",
+		Name:        "用户",
 		Description: "普通用户",
 	}
 	roles := []*model.Role{
