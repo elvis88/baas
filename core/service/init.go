@@ -30,4 +30,5 @@ var (
 	UPDATE_FAIL           = errors.New("更新失败")
 
 	CHAINID_NOT_EXIST       = errors.New("链不存在")
+	PERMISSION_DENIED     = errors.New("没有访问权限")
 )

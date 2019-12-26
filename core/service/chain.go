@@ -2,9 +2,11 @@ package service
 
 import (
 	"github.com/elvis88/baas/common/ginutil"
+	"github.com/elvis88/baas/common/jwt"
 	"github.com/elvis88/baas/core/model"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
+	"time"
 )
 
 // ChainService 区块链配置表
@@ -28,6 +30,38 @@ func (srv *ChainService) Register(router *gin.RouterGroup) {
 	chain.POST("/update", srv.ChainUpdate)
 }
 
+func Verification(c *gin.Context, userID uint) bool {
+	token := c.GetHeader(headerTokenKey)
+	session := ginutil.GetSession(c, token)
+	if nil == session {
+		ginutil.Response(c, TOKEN_NOT_EXIST, nil)
+		c.Abort()
+		return false
+	}
+
+	info, ok := jwt.ParseToken(token, TokenKey)
+	if !ok {
+		ginutil.Response(c, TOKEN_INVALID, nil)
+		c.Abort()
+		return false
+	}
+
+	var infoMap map[string]interface{}
+	if infoMap = info.(map[string]interface{}); float64(time.Now().Unix()) >= infoMap["exp"].(float64) {
+		ginutil.Response(c, TOKEN_EXPIRE, nil)
+		c.Abort()
+		return false
+	}
+
+	if tokenUserID,ok := infoMap["userId"].(float64); ok && userID == uint(tokenUserID) {
+		return true
+	} else {
+		ginutil.Response(c, PERMISSION_DENIED, nil)
+		c.Abort()
+		return false
+	}
+}
+
 // {"chainName":"ft", "userID":1, "description":"ft的私链"}
 // 添加链
 func (srv *ChainService) ChainAdd(c *gin.Context) {
@@ -37,6 +71,12 @@ func (srv *ChainService) ChainAdd(c *gin.Context) {
 		ginutil.Response(c, REQUEST_PARAM_INVALID, nil)
 		return
 	}
+
+	if false == Verification(c, chain.UserID) {
+		return
+	}
+
+
 
 	if err = srv.DB.Create(chain).Error; nil != err {
 		ginutil.Response(c, err, nil)
@@ -56,6 +96,11 @@ func (srv *ChainService) ChainList(c *gin.Context) {
 		return
 	}
 
+	if false == Verification(c, chain.UserID) {
+		return
+	}
+
+
 	var chains []*model.Chain
 	if err = srv.DB.Where(chain).Find(&chains).Error; nil != err {
 		ginutil.Response(c, err, nil)
@@ -74,6 +119,11 @@ func (srv *ChainService)ChainDelete(c *gin.Context) {
 		ginutil.Response(c, REQUEST_PARAM_INVALID, nil)
 		return
 	}
+
+	if false == Verification(c, chain.UserID) {
+		return
+	}
+
 
 	// 开启事务
 	tx := srv.DB.Begin()
@@ -111,6 +161,10 @@ func (srv *ChainService) ChainUpdate(c *gin.Context) {
 	var chain = &model.Chain{}
 	if err = c.ShouldBindJSON(chain); nil != err {
 		ginutil.Response(c, REQUEST_PARAM_INVALID, nil)
+		return
+	}
+
+	if false == Verification(c, chain.UserID) {
 		return
 	}
 

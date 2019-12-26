@@ -21,6 +21,10 @@ func (srv *ChainDeployService) ChainDeployAdd(ctx *gin.Context) {
 		return
 	}
 
+	if false == Verification(ctx, chainDeploy.UserID) {
+		return
+	}
+
 	if err = srv.DB.Create(chainDeploy).Error; nil != err {
 		ginutil.Response(ctx, err, nil)
 		return
@@ -34,6 +38,10 @@ func (srv *ChainDeployService) ChainDeployList(ctx *gin.Context) {
 	chainDeploy := &model.ChainDeploy{}
 	if err = ctx.ShouldBindJSON(chainDeploy); nil != err {
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID, nil)
+		return
+	}
+
+	if false == Verification(ctx, chainDeploy.UserID) {
 		return
 	}
 
@@ -54,6 +62,9 @@ func (srv *ChainDeployService) ChainDeployDelete(ctx *gin.Context) {
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID, nil)
 		return
 	}
+	if false == Verification(ctx, chainDeploy.UserID) {
+		return
+	}
 
 	deleteDB := srv.DB.Unscoped().Delete(chainDeploy)
 	if err = deleteDB.Error; nil != err {
@@ -72,6 +83,10 @@ func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID, nil)
 		return
 	}
+	if false == Verification(ctx, chainDeploy.UserID) {
+		return
+	}
+
 	chainDeployResult := &model.ChainDeploy{}
 	chainDeployResult.ID = chainDeploy.ID
 
