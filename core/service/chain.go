@@ -2,11 +2,9 @@ package service
 
 import (
 	"github.com/elvis88/baas/common/ginutil"
-	"github.com/elvis88/baas/common/jwt"
 	"github.com/elvis88/baas/core/model"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
-	"time"
 )
 
 // ChainService 区块链配置表
@@ -30,30 +28,14 @@ func (srv *ChainService) Register(router *gin.RouterGroup) {
 	chain.POST("/update", srv.ChainUpdate)
 }
 
-func Verification(c *gin.Context, userID uint) bool {
-	token := c.GetHeader(headerTokenKey)
-	session := ginutil.GetSession(c, token)
-	if nil == session {
-		ginutil.Response(c, TOKEN_NOT_EXIST, nil)
-		c.Abort()
-		return false
+func Verification(c *gin.Context, db *gorm.DB, userID uint) bool {
+	userService := &UserService{DB: db}
+	ok, user := userService.hasAdminRole(c)
+	if ok {
+		return true
 	}
 
-	info, ok := jwt.ParseToken(token, TokenKey)
-	if !ok {
-		ginutil.Response(c, TOKEN_INVALID, nil)
-		c.Abort()
-		return false
-	}
-
-	var infoMap map[string]interface{}
-	if infoMap = info.(map[string]interface{}); float64(time.Now().Unix()) >= infoMap["exp"].(float64) {
-		ginutil.Response(c, TOKEN_EXPIRE, nil)
-		c.Abort()
-		return false
-	}
-
-	if tokenUserID,ok := infoMap["userId"].(float64); ok && userID == uint(tokenUserID) {
+	if userID == user.ID {
 		return true
 	} else {
 		ginutil.Response(c, NOPERMISSION, nil)
@@ -72,7 +54,7 @@ func (srv *ChainService) ChainAdd(c *gin.Context) {
 		return
 	}
 
-	if false == Verification(c, chain.UserID) {
+	if false == Verification(c, srv.DB, chain.UserID) {
 		return
 	}
 
@@ -95,7 +77,7 @@ func (srv *ChainService) ChainList(c *gin.Context) {
 		return
 	}
 
-	if false == Verification(c, chain.UserID) {
+	if false == Verification(c, srv.DB, chain.UserID) {
 		return
 	}
 
@@ -119,36 +101,27 @@ func (srv *ChainService)ChainDelete(c *gin.Context) {
 		return
 	}
 
-	if false == Verification(c, chain.UserID) {
+	if chain.ID == 0 {
+		ginutil.Response(c, PARAMS_IS_NOT_ENOUGH, nil)
 		return
 	}
 
-
-	// 开启事务
-	tx := srv.DB.Begin()
-
-	if err := tx.Unscoped().Where("user_id = ? and chain_id = ?", chain.UserID, chain.ID).Delete(model.ChainDeploy{}).Error; nil != err {
-		tx.Rollback()
-		ginutil.Response(c, err, nil)
-		return
-	}
-
-
-	// 删除chain的数据
-	deleteDB := tx.Unscoped().Where("id = ?", chain.UserID).Delete(model.Chain{})
-	if err := deleteDB.Error; nil != err {
-		tx.Rollback()
-		ginutil.Response(c, DELETE_FAIL, nil)
-		return
-	}
-
-	if 0 == deleteDB.RowsAffected {
+	if err = srv.DB.First(chain).Error; nil != err {
 		ginutil.Response(c, CHAINID_NOT_EXIST, nil)
 		return
 	}
 
-	// 结束事务
-	tx.Commit()
+	if false == Verification(c, srv.DB, chain.UserID) {
+		return
+	}
+
+	// 删除chain的数据
+	deleteDB := srv.DB.Unscoped().Where("id = ?", chain.ID).Delete(model.Chain{})
+	if err := deleteDB.Error; nil != err {
+		ginutil.Response(c, DELETE_FAIL, nil)
+		return
+	}
+
 	ginutil.Response(c, nil, nil)
 }
 
@@ -156,6 +129,7 @@ func (srv *ChainService)ChainDelete(c *gin.Context) {
 // {"chainID":4, "name":"ft", "userID":1, "description":"ft的私链1"}
 // 链更新
 func (srv *ChainService) ChainUpdate(c *gin.Context) {
+	// 读取主体信息
 	var err error
 	var chain = &model.Chain{}
 	if err = c.ShouldBindJSON(chain); nil != err {
@@ -163,22 +137,37 @@ func (srv *ChainService) ChainUpdate(c *gin.Context) {
 		return
 	}
 
-	if false == Verification(c, chain.UserID) {
+	// 如果主体中不包含链ID，则直接返回
+	if chain.ID == 0 {
+		ginutil.Response(c, PARAMS_IS_NOT_ENOUGH, nil)
 		return
 	}
 
-	result := &model.Chain{}
-	result.ID = chain.ID
+	// 获取链对应的账户ID
+	chainVerify := &model.Chain{Model:model.Model{ID: chain.ID}}
+	if err = srv.DB.First(chainVerify).Error; nil != err {
+		ginutil.Response(c, CHAINID_NOT_EXIST, nil)
+		return
+	}
 
-	updateDB := srv.DB.Model(result).Updates(chain)
+	// 验证对该链有没有操作权限
+	if false == Verification(c, srv.DB, chainVerify.UserID) {
+		return
+	}
+
+	// 更新链
+	updateDB := srv.DB.Model(chain).Updates(&model.Chain{Name: chain.Name, Description:chain.Description})
 	if err = updateDB.Error; nil != err {
 		ginutil.Response(c, err, nil)
 		return
 	}
-	if 0 == updateDB.RowsAffected {
-		ginutil.Response(c, UPDATE_FAIL, nil)
+
+	// 获取最新链数据
+	if err = srv.DB.First(chain).Error; nil != err {
+		ginutil.Response(c, CHAINID_NOT_EXIST, nil)
 		return
 	}
 
-	ginutil.Response(c, nil, result)
+	// 返回更新链结果
+	ginutil.Response(c, nil, chain)
 }
