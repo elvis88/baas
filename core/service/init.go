@@ -2,11 +2,7 @@ package service
 
 import (
 	"errors"
-
-	"github.com/elvis88/baas/common/log"
 )
-
-var logger = log.GetLogger("baas", log.DEBUG)
 
 const (
 	headerTokenKey = "Authorization"
@@ -24,6 +20,7 @@ var (
 	TEL_NOT_EXIST         = errors.New("手机号不存在")
 	EMAIL_NOT_EXIST       = errors.New("邮箱不存在")
 	PASSWORD_WRONG        = errors.New("密码不正确")
+	CODE_EXIST            = errors.New("验证码已存在,请勿频繁发送")
 	CODE_NOT_EXIST        = errors.New("验证码不存在")
 	CODE_WRONG            = errors.New("验证码不正确")
 	CODE_EXPIRE           = errors.New("验证码过期")
@@ -40,9 +37,11 @@ var (
 	CHANGE_TEL_FAIL       = errors.New("修改手机号失败")
 	CHANGE_EMAIL_FAIL     = errors.New("修改邮箱失败")
 
-	NAME_INVALID  = errors.New("无效用户名")
-	EMAIL_INVALID = errors.New("无效邮箱")
-	TEL_INVALID   = errors.New("无效手机号")
+	NAME_INVALID            = errors.New("无效用户名")
+	EMAIL_INVALID           = errors.New("无效邮箱")
+	TEL_INVALID             = errors.New("无效手机号")
+	CODE_UNKOWN_TYPE        = errors.New("未知发送方式")
+	CODE_CHANGE_AIM_INVALID = errors.New("无效修改验证码类型")
 
 	CHAINID_NOT_EXIST = errors.New("链不存在")
 )
