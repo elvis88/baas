@@ -45,7 +45,10 @@ var (
 	NOPERMISSION            = errors.New("权限不够")
 	ROLE_WRONG              = errors.New("权限不正确")
 
-	CHAINID_NOT_EXIST    = errors.New("链不存在")
+	ADD_CHAIN_FAIL			= errors.New("添加链失败")
+	CHAINID_NOT_EXIST   	= errors.New("链不存在")
 	CHAINID_DEPLOY_NOT_EXIST = errors.New("节点不存在")
-	PARAMS_IS_NOT_ENOUGH = errors.New("参数不足")
+	PARAMS_IS_NOT_ENOUGH 	= errors.New("参数不足")
+
+	ADD_CHAIN_DEPLOY_FAIL   = errors.New("添加链实例失败")
 )

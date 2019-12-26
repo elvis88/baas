@@ -541,7 +541,7 @@ func (srv *UserService) UserLoginCode(ctx *gin.Context) {
 		return
 	}
 
-	codesessionkey := ""
+	codesessionkey := "code"
 	if len(req.Email) != 0 {
 		codesessionkey = CodeLoginKey + req.Telephone
 	} else if len(req.Telephone) != 0 {

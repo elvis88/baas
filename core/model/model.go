@@ -23,6 +23,7 @@ type User struct {
 
 	Roles          []*Role          `json:"role,omitempty" gorm:"many2many:user_role;"`
 	Chains         []*Chain         `json:"chain,omitempty"`
+    OwnerChains    []*Chain			`json:"ownerchain,omitempty" gorm:"many2many:user_chain;"`
 	ChainDeploys   []*ChainDeploy   `json:"chaindeploy,omitempty"`
 	Browsers       []*Browser       `json:"browser,omitempty"`
 	BrowserDeploys []*BrowserDeploy `json:"browserdeploy,omitempty"`
@@ -42,10 +43,11 @@ type Chain struct {
 	Model
 
 	Name        string `gorm:"not null;unique"`
+	Url         string
 	Description string `gorm:"column:desc"`
+	Public      bool
 
-	UserID      uint `sql:"type:integer REFERENCES t_user(id) on update no action on delete no action"`
-	ChainDeploy []ChainDeploy
+	UserID      uint   `gorm:"column:owner_id"`
 }
 
 // ChainDeploy 区块链部署表
@@ -55,8 +57,8 @@ type ChainDeploy struct {
 	Name        string `gorm:"type:varchar(100);not null;unique"`
 	Description string `gorm:"column:desc"`
 
-	UserID  uint `sql:"type:integer REFERENCES t_user(id) on update no action on delete no action"`
-	ChainID uint `sql:"type:integer REFERENCES t_chain(id) on update no action on delete no action"`
+	UserID  uint	   `gorm:"column:user_id"`
+	ChainID uint       `gorm:"column:chain_id"`
 }
 
 // Browser 浏览器表
@@ -66,8 +68,8 @@ type Browser struct {
 	Name        string `gorm:"type:varchar(100);not null;unique"`
 	Description string `gorm:"column:desc"`
 
-	UserID        uint `sql:"type:integer REFERENCES t_user(id) on update no action on delete no action"`
-	BrowserDeploy []BrowserDeploy
+	UserID        uint
+	BrowserDeploy []*BrowserDeploy
 }
 
 // BrowserDeploy 浏览器部署表
@@ -77,6 +79,6 @@ type BrowserDeploy struct {
 	Name        string `gorm:"type:varchar(100);not null;unique"`
 	Description string `gorm:"column:desc"`
 
-	UserID    uint `sql:"type:integer REFERENCES t_user(id) on update no action on delete no action"`
-	BrowserID uint `sql:"type:integer REFERENCES t_browser(id) on update no action on delete no action"`
+	UserID    uint
+	BrowserID uint
 }
