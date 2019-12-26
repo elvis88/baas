@@ -42,6 +42,7 @@ var (
 	TEL_INVALID             = errors.New("无效手机号")
 	CODE_UNKOWN_TYPE        = errors.New("未知发送方式")
 	CODE_CHANGE_AIM_INVALID = errors.New("无效修改验证码类型")
+	NOPERMISSION            = errors.New("权限不够")
 
 	CHAINID_NOT_EXIST = errors.New("链不存在")
 )

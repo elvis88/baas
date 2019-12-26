@@ -195,11 +195,18 @@ func (srv *UserService) UserList(ctx *gin.Context) {
 	}
 	usrs := []*model.User{}
 	offset := req.Page * req.PageSize
-	if err := srv.DB.Offset(offset).Limit(req.PageSize).Find(&usrs).Error; err != nil {
-
-		ginutil.Response(ctx, GET_FAIL, err.Error())
-		return
+	if has, cusr := srv.hasAdminRole(ctx); has {
+		if err := srv.DB.Where(cusr).Offset(offset).Limit(req.PageSize).Find(&usrs).Error; err != nil {
+			ginutil.Response(ctx, GET_FAIL, err.Error())
+			return
+		}
+	} else {
+		if err := srv.DB.Offset(offset).Limit(req.PageSize).Find(&usrs).Error; err != nil {
+			ginutil.Response(ctx, GET_FAIL, err.Error())
+			return
+		}
 	}
+
 	ginutil.Response(ctx, nil, usrs)
 	return
 }
@@ -237,6 +244,11 @@ func (srv *UserService) UserDelete(ctx *gin.Context) {
 		return
 	}
 
+	if has, cusr := srv.hasAdminRole(ctx); !has && cusr.ID != usr.ID {
+		ginutil.Response(ctx, NOPERMISSION, nil)
+		return
+	}
+
 	if res := srv.DB.Unscoped().Delete(&usr); res.RowsAffected == 0 {
 		errstr := ""
 		if res.Error != nil {
@@ -255,6 +267,11 @@ func (srv *UserService) UserUpdate(ctx *gin.Context) {
 	usr := &model.User{}
 	if err := ctx.ShouldBindJSON(usr); err != nil {
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
+		return
+	}
+
+	if has, cusr := srv.hasAdminRole(ctx); !has && cusr.ID != usr.ID {
+		ginutil.Response(ctx, NOPERMISSION, nil)
 		return
 	}
 
@@ -556,6 +573,25 @@ func (srv *UserService) sendCode(req *CodeRequest) (map[string]interface{}, erro
 		return nil, CODE_UNKOWN_TYPE
 	}
 	return info, nil
+}
+
+// hasAdminRole 是否拥有admin
+func (srv *UserService) hasAdminRole(ctx *gin.Context) (bool, *model.User) {
+	token := ctx.GetHeader(headerTokenKey)
+	session := ginutil.GetSession(ctx, token)
+	usr := &model.User{
+		Model: model.Model{
+			ID: session.(uint),
+		},
+	}
+	roles := []*model.Role{}
+	srv.DB.Model(usr).Related(&roles)
+	for _, role := range roles {
+		if strings.Compare(role.Name, "admin") == 0 {
+			return true, usr
+		}
+	}
+	return false, usr
 }
 
 // Register ...
