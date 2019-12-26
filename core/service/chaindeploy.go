@@ -21,6 +21,7 @@ func (srv *ChainDeployService) getAndCheckParams(ctx *gin.Context) (cDeploy *mod
 	if chainDeploy.UserID  == 0  || chainDeploy.ChainID == 0 {
 		return nil, PARAMS_IS_NOT_ENOUGH
 	}
+	return chainDeploy, nil
 }
 
 // ChainDeployAdd 新增

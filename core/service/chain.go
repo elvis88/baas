@@ -56,7 +56,7 @@ func Verification(c *gin.Context, userID uint) bool {
 	if tokenUserID,ok := infoMap["userId"].(float64); ok && userID == uint(tokenUserID) {
 		return true
 	} else {
-		ginutil.Response(c, PERMISSION_DENIED, nil)
+		ginutil.Response(c, NOPERMISSION, nil)
 		c.Abort()
 		return false
 	}
