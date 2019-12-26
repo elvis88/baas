@@ -195,7 +195,7 @@ func (srv *UserService) UserList(ctx *gin.Context) {
 	}
 	usrs := []*model.User{}
 	offset := req.Page * req.PageSize
-	if has, cusr := srv.hasAdminRole(ctx); has {
+	if has, cusr := srv.hasAdminRole(ctx); !has {
 		if err := srv.DB.Where(cusr).Offset(offset).Limit(req.PageSize).Find(&usrs).Error; err != nil {
 			ginutil.Response(ctx, GET_FAIL, err.Error())
 			return
@@ -226,6 +226,12 @@ func (srv *UserService) UserAdd(ctx *gin.Context) {
 		return
 	}
 	usr.Password = password
+	userRole := &model.Role{}
+	if err := srv.DB.Where(&model.Role{
+		Name: "user",
+	}).First(userRole).Error; err == nil {
+		usr.Roles = append(usr.Roles, userRole)
+	}
 
 	if err := srv.DB.Create(&usr).Error; err != nil {
 

@@ -21,11 +21,11 @@ type User struct {
 	Email     string `json:"email;unique"`
 	Telephone string `json:"tel" gorm:"column:tel;unique"`
 
-	Roles          []Role          `json:"-" gorm:"many2many:user_role;"`
-	Chains         []Chain         `json:"-"`
-	ChainDeploys   []ChainDeploy   `json:"-"`
-	Browsers       []Browser       `json:"-"`
-	BrowserDeploys []BrowserDeploy `json:"-"`
+	Roles          []*Role          `json:"role,omitempty" gorm:"many2many:user_role;"`
+	Chains         []*Chain         `json:"chain,omitempty"`
+	ChainDeploys   []*ChainDeploy   `json:"chaindeploy,omitempty"`
+	Browsers       []*Browser       `json:"browser,omitempty"`
+	BrowserDeploys []*BrowserDeploy `json:"browserdeploy,omitempty"`
 }
 
 // Role 角色表

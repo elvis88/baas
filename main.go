@@ -62,11 +62,15 @@ func main() {
 	// 注册服务
 	if err := core.Server(router, db); err != nil {
 		logger.Error(err)
+		return
 	}
 
 	// 设置服务端口
 	servicePort := viper.GetString("baas.config.port")
-	_ = router.Run(fmt.Sprintf(":%s", servicePort))
+	if err := router.Run(fmt.Sprintf(":%s", servicePort)); err != nil {
+		logger.Error(err)
+		return
+	}
 }
 
 func init() {

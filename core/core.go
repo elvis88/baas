@@ -20,6 +20,45 @@ func Server(router *gin.Engine, db *gorm.DB) error {
 		model.Browser{}, model.BrowserDeploy{}).Error; err != nil {
 		return err
 	}
+	// 初始角色
+	adminRole := &model.Role{
+		Name:        "admin",
+		Description: "超级管理员,拥有所有权限",
+	}
+	userRole := &model.Role{
+		Name:        "user",
+		Description: "普通用户",
+	}
+	roles := []*model.Role{
+		adminRole,
+		userRole,
+	}
+	for _, role := range roles {
+		if err := db.FirstOrCreate(role, &model.Role{
+			Name: role.Name,
+		}).Error; err != nil {
+			return err
+		}
+	}
+	// 初始Amdin用户
+	adminUsr := &model.User{
+		Name:     "admin",
+		Password: "123456",
+		Roles: []*model.Role{
+			adminRole,
+		},
+	}
+	usrs := []*model.User{
+		adminUsr,
+	}
+	for _, usr := range usrs {
+		if err := db.FirstOrCreate(usr, &model.User{
+			Name: usr.Name,
+		}).Error; err != nil {
+			return err
+		}
+	}
+
 	services := []service{
 		&srv.UserService{
 			DB: db,
