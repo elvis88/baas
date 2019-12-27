@@ -14,25 +14,15 @@ type ChainDeployService struct {
 
 func (srv *ChainDeployService) userHaveChain(userID, chainID uint) (b bool, err error) {
 	var chains []*model.Chain
-	var chain = &model.Chain{
-		Model:model.Model{ID:chainID},
-	}
 
 	// 未验证(关联查询如何添加条件)
-	if err = srv.DB.Model(
-		&model.User{
-			Model: model.Model{ID:userID},
-			OwnerChains:[]*model.Chain{chain},
-		}).
+	if err = srv.DB.Model(&model.User{Model: model.Model{ID:userID},}).
+		Where(&model.Chain{Model: model.Model{ID:chainID}}).
 		Association("OwnerChains").Find(&chains).Error; nil != err {
 		return false, err
 	}
 
-	if len(chains) == 0 {
-		return false, nil
-	}
-
-	return true, nil
+	return false, nil
 }
 
 // ChainDeployAdd 新增
@@ -53,6 +43,7 @@ func (srv *ChainDeployService) ChainDeployAdd(ctx *gin.Context) {
 	ok, err := srv.userHaveChain(user.ID, chainDeploy.ChainID)
 	if nil != err || !ok {
 		ginutil.Response(ctx, ADD_CHAIN_DEPLOY_FAIL, err)
+		return
 	}
 
 	chainDeploy.UserID = user.ID
@@ -66,32 +57,39 @@ func (srv *ChainDeployService) ChainDeployAdd(ctx *gin.Context) {
 }
 
 func (srv *ChainDeployService) ChainDeployList(ctx *gin.Context) {
+	req := &PagerRequest{
+		Page:     0,
+		PageSize: 10,
+	}
+
 	// 获取请求参数
 	var err error
-	chainDeploy := &model.ChainDeploy{}
-	if err = ctx.ShouldBindJSON(chainDeploy); nil != err {
+	if err = ctx.ShouldBindJSON(req); nil != err {
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID ,err)
 		return
 	}
 
 	// 获取账户
+	offset := req.Page * req.PageSize
 	userService := &UserService{DB: srv.DB}
-	_, user := userService.hasAdminRole(ctx)
-
-	// 验证用户是否拥有链
-	ok, err := srv.userHaveChain(user.ID, chainDeploy.ChainID)
-	if nil != err || !ok {
-		ginutil.Response(ctx, ADD_CHAIN_DEPLOY_FAIL, err)
-	}
+	ok, user := userService.hasAdminRole(ctx)
 
 	// 获取实例列表
 	var chainDeploys []*model.ChainDeploy
-	if err = srv.DB.Where(&model.ChainDeploy{
-		UserID: user.ID,
-		ChainID: chainDeploy.ChainID,
-	}).Find(&chainDeploys).Error; nil != err {
-		ginutil.Response(ctx, err, nil)
-		return
+
+	// admin查看所有节点
+	if ok {
+		if err = srv.DB.Offset(offset).Limit(req.PageSize).Where(&model.ChainDeploy{}).Find(&chainDeploys).Error; nil != err {
+			ginutil.Response(ctx, err, nil)
+			return
+		}
+	} else {
+		if err = srv.DB.Offset(offset).Limit(req.PageSize).Where(&model.ChainDeploy{
+			UserID: user.ID,
+		}).Find(&chainDeploys).Error; nil != err {
+			ginutil.Response(ctx, err, nil)
+			return
+		}
 	}
 
 	// 返回链实例列表
@@ -118,7 +116,14 @@ func (srv *ChainDeployService) ChainDeployDelete(ctx *gin.Context) {
 		return
 	}
 
-	if false == Verification(ctx, srv.DB, chainDeploy.UserID) {
+
+	// 获取账户信息
+	userService := &UserService{DB: srv.DB}
+	_, user := userService.hasAdminRole(ctx)
+
+	// 验证当前用户是否有修改权(admin 不可以删除)
+	if chainDeploy.UserID != user.ID {
+		ginutil.Response(ctx, NOPERMISSION, nil)
 		return
 	}
 
@@ -154,8 +159,13 @@ func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
 		return
 	}
 
-	// 验证用户是否有修改权限
-	if false == Verification(ctx, srv.DB, chainDeployVerify.UserID) {
+	// 获取账户信息
+	userService := &UserService{DB: srv.DB}
+	_, user := userService.hasAdminRole(ctx)
+
+	// 验证当前用户是否有修改权(admin 不可以删除)
+	if chainDeploy.UserID != user.ID {
+		ginutil.Response(ctx, NOPERMISSION, nil)
 		return
 	}
 
