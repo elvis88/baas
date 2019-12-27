@@ -23,22 +23,6 @@ func (srv *ChainService) Register(router *gin.RouterGroup) {
 	chain.POST("/update", srv.ChainUpdate)
 }
 
-func Verification(c *gin.Context, db *gorm.DB, userID uint) bool {
-	userService := &UserService{DB: db}
-	ok, user := userService.hasAdminRole(c)
-	if ok {
-		return true
-	}
-
-	if userID == user.ID {
-		return true
-	} else {
-		ginutil.Response(c, NOPERMISSION, nil)
-		c.Abort()
-		return false
-	}
-}
-
 // {"chainName":"ft", "userID":1, "description":"ft的私链"}
 // 添加链
 func (srv *ChainService) ChainAdd(c *gin.Context) {
@@ -70,7 +54,7 @@ func (srv *ChainService) ChainAdd(c *gin.Context) {
 	ginutil.Response(c, nil, chain)
 }
 
-// 添加已有链
+// 添加已有链（admin不可以添加别人的链）
 func (srv *ChainService) ChainJoin(c *gin.Context) {
 	var err error
 
@@ -105,19 +89,39 @@ func (srv *ChainService) ChainJoin(c *gin.Context) {
 	ginutil.Response(c, nil, chain)
 }
 
-// 获取链列表
+// 获取链列表（admin可以查看任何人的链）
 func (srv *ChainService) ChainList(c *gin.Context) {
+	req := &PagerRequest{
+		Page:     0,
+		PageSize: 10,
+	}
 	var err error
+
+	// 获取主体信息
+	if err = c.ShouldBindJSON(req); nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, err)
+		return
+	}
+	offset := req.Page * req.PageSize
 
 	// 获取账户信息
 	userService := &UserService{DB: srv.DB}
-	_, user := userService.hasAdminRole(c)
+	ok, user := userService.hasAdminRole(c)
 
-	// 获取与账户关联的链
 	var chains []*model.Chain
-	if err = srv.DB.Model(&user).Association("OwnerChains").Find(&chains).Error; nil != err {
-		ginutil.Response(c, err, nil)
-		return
+
+	// admin查看所有链
+	if ok {
+		if err = srv.DB.Offset(offset).Limit(req.PageSize).Find(&chains).Error; nil != err {
+			ginutil.Response(c, GET_CHAINS_FAIL, err)
+			return
+		}
+	} else {
+		// 获取与账户关联的链
+		if err = srv.DB.Model(&user).Offset(offset).Limit(req.PageSize).Association("OwnerChains").Find(&chains).Error; nil != err {
+			ginutil.Response(c, err, nil)
+			return
+		}
 	}
 
 	ginutil.Response(c, nil, chains)
@@ -146,8 +150,13 @@ func (srv *ChainService)ChainDelete(c *gin.Context) {
 		return
 	}
 
-	// 验证当前用户是否有修改权
-	if false == Verification(c, srv.DB, chain.UserID) {
+	// 获取账户信息
+	userService := &UserService{DB: srv.DB}
+	_, user := userService.hasAdminRole(c)
+
+	// 验证当前用户是否有修改权(admin 不可以删除)
+	if chain.UserID != user.ID {
+		ginutil.Response(c, NOPERMISSION, nil)
 		return
 	}
 
@@ -184,17 +193,14 @@ func (srv *ChainService) ChainExit(c *gin.Context) {
 		return
 	}
 
-	// 获取账户
+	// 获取账户信息
 	userService := &UserService{DB: srv.DB}
 	_, user := userService.hasAdminRole(c)
-	if user.ID != chain.UserID {
-		ginutil.Response(c, NOPERMISSION, nil)
-		return
-	}
 
 	// 删除联系
 	if err = srv.DB.Model(user).Association("OwnerChains").Delete(chain).Error; nil != err {
-		ginutil.Response(c, ADD_CHAIN_FAIL, err)
+		ginutil.Response(c, DELETE_FAIL, err)
+		return
 	}
 
 	ginutil.Response(c, nil, chain)
@@ -223,8 +229,13 @@ func (srv *ChainService) ChainUpdate(c *gin.Context) {
 		return
 	}
 
-	// 验证对该链有没有操作权限
-	if false == Verification(c, srv.DB, chainVerify.UserID) {
+	// 获取账户信息
+	userService := &UserService{DB: srv.DB}
+	_, user := userService.hasAdminRole(c)
+
+	// 验证当前用户是否有修改权(admin 不可以更新)
+	if chain.UserID != user.ID {
+		ginutil.Response(c, NOPERMISSION, nil)
 		return
 	}
 

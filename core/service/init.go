@@ -47,6 +47,7 @@ var (
 	ROLE_WRONG       = errors.New("权限不正确")
 
 	ADD_CHAIN_FAIL           = errors.New("添加链失败")
+	GET_CHAINS_FAIL          = errors.New("获取链列表失败")
 	CHAINID_NOT_EXIST        = errors.New("链不存在")
 	CHAINID_DEPLOY_NOT_EXIST = errors.New("节点不存在")
 	PARAMS_IS_NOT_ENOUGH     = errors.New("参数不足")
