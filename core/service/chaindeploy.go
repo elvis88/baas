@@ -13,16 +13,16 @@ type ChainDeployService struct {
 }
 
 func (srv *ChainDeployService) userHaveChain(userID, chainID uint) (b bool, err error) {
-	var chains []*model.Chain
+	var chain model.Chain
 
-	// 未验证(关联查询如何添加条件)
-	if err = srv.DB.Model(&model.User{Model: model.Model{ID:userID},}).
+	// 查看用户是否和该链有关联
+	if err = srv.DB.Model(&model.User{Model: model.Model{ID:userID}}).
 		Where(&model.Chain{Model: model.Model{ID:chainID}}).
-		Association("OwnerChains").Find(&chains).Error; nil != err {
+		Association("OwnerChains").Find(&chain).Error; nil != err || chain.ID == 0 {
 		return false, err
 	}
 
-	return false, nil
+	return true, nil
 }
 
 // ChainDeployAdd 新增
@@ -164,7 +164,7 @@ func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
 	_, user := userService.hasAdminRole(ctx)
 
 	// 验证当前用户是否有修改权(admin 不可以删除)
-	if chainDeploy.UserID != user.ID {
+	if chainDeployVerify.UserID != user.ID {
 		ginutil.Response(ctx, NOPERMISSION, nil)
 		return
 	}
