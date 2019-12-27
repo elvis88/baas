@@ -49,6 +49,7 @@ func (srv *ChainService) ChainAdd(c *gin.Context) {
 	// 建立用户与链的关联
 	if err = srv.DB.Model(user).Association("OwnerChains").Append(chain).Error; nil != err {
 		ginutil.Response(c, ADD_CHAIN_FAIL, err)
+		return
 	}
 
 	ginutil.Response(c, nil, chain)
@@ -240,7 +241,13 @@ func (srv *ChainService) ChainUpdate(c *gin.Context) {
 	}
 
 	// 更新链
-	updateDB := srv.DB.Model(chain).Updates(&model.Chain{Name: chain.Name, Description:chain.Description})
+	updateDB := srv.DB.Model(chain).Updates(
+		&model.Chain{
+			Name: chain.Name,
+			Url: chain.Url,
+			Public:chain.Public,
+			Description:chain.Description,
+		})
 	if err = updateDB.Error; nil != err {
 		ginutil.Response(c, err, nil)
 		return
