@@ -23,7 +23,6 @@ func (srv *ChainService) Register(router *gin.RouterGroup) {
 	chain.POST("/update", srv.ChainUpdate)
 }
 
-// {"chainName":"ft", "userID":1, "description":"ft的私链"}
 // 添加链
 func (srv *ChainService) ChainAdd(c *gin.Context) {
 	var err error
@@ -235,7 +234,7 @@ func (srv *ChainService) ChainUpdate(c *gin.Context) {
 	_, user := userService.hasAdminRole(c)
 
 	// 验证当前用户是否有修改权(admin 不可以更新)
-	if chain.UserID != user.ID {
+	if chainVerify.UserID != user.ID {
 		ginutil.Response(c, NOPERMISSION, nil)
 		return
 	}
