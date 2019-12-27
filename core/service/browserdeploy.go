@@ -89,7 +89,7 @@ func (srv *BrowserDeployService) BrowserDeployUpdate(ctx *gin.Context) {
 }
 
 // Register ...
-func (srv *BrowserDeployService) Register(api *gin.RouterGroup) {
+func (srv *BrowserDeployService) Register(router *gin.Engine, api *gin.RouterGroup) {
 	browserDeployGroup := api.Group("/browserdeploy")
 	browserDeployGroup.POST("/add", srv.BrowserDeployAdd)
 	browserDeployGroup.POST("/list", srv.BrowserDeployList)

@@ -25,5 +25,5 @@ func (srv *RoleService) RoleUpdate(ctx *gin.Context) {
 }
 
 // Register ...
-func (srv *RoleService) Register(api *gin.RouterGroup) {
+func (srv *RoleService) Register(router *gin.Engine, api *gin.RouterGroup) {
 }

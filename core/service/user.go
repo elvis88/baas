@@ -13,6 +13,7 @@ import (
 	"github.com/elvis88/baas/common/ginutil"
 	"github.com/elvis88/baas/common/jwt"
 	"github.com/elvis88/baas/common/password"
+	"github.com/elvis88/baas/core/generate"
 	"github.com/elvis88/baas/core/model"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
@@ -686,8 +687,46 @@ func (srv *UserService) hasAdminRole(ctx *gin.Context) (bool, *model.User) {
 	return false, usr
 }
 
+// UserGetFile 获取文件
+func (srv *UserService) UserGetFile(ctx *gin.Context) {
+	nodename := ctx.Param("nodename")
+	action := ctx.Param("action")
+
+	_, cusr := srv.hasAdminRole(ctx)
+	cnt := 0
+	// 判断 nodename 是否是自己创建
+	if strings.Compare(action, generate.Application) == 0 {
+		if err := srv.DB.Where(&model.Chain{
+			Name:   nodename,
+			UserID: cusr.ID,
+		}).Count(&cnt).Error; err != nil {
+			ginutil.Response(ctx, GET_FAIL, err)
+			return
+		}
+	} else if strings.Compare(action, generate.Deployment) == 0 {
+		if err := srv.DB.Where(&model.ChainDeploy{
+			Name:   nodename,
+			UserID: cusr.ID,
+		}).Count(&cnt).Error; err != nil {
+			ginutil.Response(ctx, GET_FAIL, err)
+			return
+		}
+	} else {
+		ginutil.Response(ctx, ACTION_UNKOWN_TYPE, nil)
+		return
+	}
+
+	if cnt == 0 {
+		ginutil.Response(ctx, NOPERMISSION, nil)
+		return
+	}
+
+	usrName := cusr.Name
+	ctx.Request.URL.Path = strings.Replace(ctx.Request.URL.Path, fmt.Sprintf("file/%s/%s", nodename, action), fmt.Sprintf("data/%s/%s/%s", usrName, nodename, action), 1)
+}
+
 // Register ...
-func (srv *UserService) Register(api *gin.RouterGroup) {
+func (srv *UserService) Register(router *gin.Engine, api *gin.RouterGroup) {
 	api.POST("/user/add", srv.UserAdd)
 	api.POST("/user/login", srv.UserLogin)
 	api.POST("/user/logincode", srv.UserLoginCode)
@@ -703,4 +742,11 @@ func (srv *UserService) Register(api *gin.RouterGroup) {
 	api.POST("/user/changetel", srv.UserChangeTel)
 	api.POST("/user/changeemail", srv.UserChangeEmail)
 	api.POST("/user/changecode", srv.UserChangeCode)
+
+	// 脚本下载
+	api.Static("/data", "./shared/data")
+	api.GET("/file/:nodename/:action/:fname", func(ctx *gin.Context) {
+		srv.UserGetFile(ctx)
+		router.HandleContext(ctx)
+	})
 }

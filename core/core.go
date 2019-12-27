@@ -10,7 +10,7 @@ import (
 )
 
 type service interface {
-	Register(router *gin.RouterGroup)
+	Register(router *gin.Engine, api *gin.RouterGroup)
 }
 
 // Server 提供服务
@@ -113,7 +113,7 @@ func Server(router *gin.Engine, db *gorm.DB) error {
 	ginutil.UseSession(router)
 	apiv1 := router.Group("api/v1")
 	for _, service := range services {
-		service.Register(apiv1)
+		service.Register(router, apiv1)
 	}
 	return nil
 }

@@ -9,14 +9,14 @@ import (
 
 // ChainService 区块链配置表
 type ChainService struct {
-	DB        *gorm.DB
+	DB *gorm.DB
 }
 
 // Register
-func (srv *ChainService) Register(router *gin.RouterGroup) {
-	chain := router.Group("/chain")
+func (srv *ChainService) Register(router *gin.Engine, api *gin.RouterGroup) {
+	chain := api.Group("/chain")
 	chain.POST("/add", srv.ChainAdd)
-	chain.POST("/join",srv.ChainJoin)
+	chain.POST("/join", srv.ChainJoin)
 	chain.POST("/list", srv.ChainList)
 	chain.POST("/delete", srv.ChainDelete)
 	chain.POST("/exit", srv.ChainExit)
@@ -72,7 +72,7 @@ func (srv *ChainService) ChainJoin(c *gin.Context) {
 	}
 
 	// 查询链是否存在
-	if err = srv.DB.First(chain).Error; nil != err{
+	if err = srv.DB.First(chain).Error; nil != err {
 		ginutil.Response(c, CHAINID_NOT_EXIST, err)
 		return
 	}
@@ -128,7 +128,7 @@ func (srv *ChainService) ChainList(c *gin.Context) {
 }
 
 // 删除链
-func (srv *ChainService)ChainDelete(c *gin.Context) {
+func (srv *ChainService) ChainDelete(c *gin.Context) {
 	var err error
 
 	// 获取主体信息
@@ -188,7 +188,7 @@ func (srv *ChainService) ChainExit(c *gin.Context) {
 	}
 
 	// 查询链是否存在
-	if err = srv.DB.First(chain).Error; nil != err{
+	if err = srv.DB.First(chain).Error; nil != err {
 		ginutil.Response(c, CHAINID_NOT_EXIST, err)
 		return
 	}
@@ -223,8 +223,8 @@ func (srv *ChainService) ChainUpdate(c *gin.Context) {
 	}
 
 	// 获取链对应的账户ID
-	chainVerify := &model.Chain{Model:model.Model{ID: chain.ID}}
-	if err = srv.DB.First(chainVerify).Error; nil != err{
+	chainVerify := &model.Chain{Model: model.Model{ID: chain.ID}}
+	if err = srv.DB.First(chainVerify).Error; nil != err {
 		ginutil.Response(c, CHAINID_NOT_EXIST, nil)
 		return
 	}
@@ -242,10 +242,10 @@ func (srv *ChainService) ChainUpdate(c *gin.Context) {
 	// 更新链
 	updateDB := srv.DB.Model(chain).Updates(
 		&model.Chain{
-			Name: chain.Name,
-			Url: chain.Url,
-			Public:chain.Public,
-			Description:chain.Description,
+			Name:        chain.Name,
+			Url:         chain.Url,
+			Public:      chain.Public,
+			Description: chain.Description,
 		})
 	if err = updateDB.Error; nil != err {
 		ginutil.Response(c, err, nil)

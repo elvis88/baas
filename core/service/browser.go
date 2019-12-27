@@ -64,7 +64,6 @@ func (srv *BrowserService) BrowserDelete(ctx *gin.Context) {
 		return
 	}
 
-
 	// 删除浏览器的数据
 	deleteDB := tx.Unscoped().Where("user_id = ?", browser.UserID).Delete(model.Browser{})
 	if err := deleteDB.Error; nil != err {
@@ -108,7 +107,7 @@ func (srv *BrowserService) BrowserUpdate(ctx *gin.Context) {
 }
 
 // Register ...
-func (srv *BrowserService) Register(api *gin.RouterGroup) {
+func (srv *BrowserService) Register(router *gin.Engine, api *gin.RouterGroup) {
 	browserGroup := api.Group("/browser")
 	browserGroup.POST("/add", srv.BrowserAdd)
 	browserGroup.POST("/list", srv.BrowserList)
