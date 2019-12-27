@@ -556,18 +556,25 @@ func (srv *UserService) UserChangeEmail(ctx *gin.Context) {
 type CodeRequest struct {
 	Telephone string `json:"phone"`
 	Email     string `json:"email"`
-	Aim       string `json:"aim"`
+	Aim       string `json:"aim" binding:"requried"`
 }
 
 // UserLoginCode 获取验证码
 func (srv *UserService) UserLoginCode(ctx *gin.Context) {
-	req := &CodeRequest{}
+	req := &CodeRequest{
+		Aim: CodeLoginKey,
+	}
 	if err := ctx.ShouldBindJSON(req); err != nil {
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
 
-	codesessionkey := "code"
+	if strings.Compare(req.Aim, CodeLoginKey) != 0 {
+		ginutil.Response(ctx, CODE_AIM_INVALID, nil)
+		return
+	}
+
+	codesessionkey := ""
 	if len(req.Email) != 0 {
 		codesessionkey = CodeLoginKey + req.Email
 	} else if len(req.Telephone) != 0 {
@@ -610,14 +617,14 @@ func (srv *UserService) UserChangeCode(ctx *gin.Context) {
 	userID := strconv.FormatUint(uint64(ginutil.GetSession(ctx, token).(uint)), 10)
 
 	codesessionkey := ""
-	if strings.HasPrefix(CodePWDKey, req.Aim+"_") {
+	if strings.Compare(CodePWDKey, req.Aim) == 0 {
 		codesessionkey = CodePWDKey + userID
-	} else if strings.HasPrefix(CodeTelKey, req.Aim+"_") {
+	} else if strings.Compare(CodeTelKey, req.Aim) == 0 {
 		codesessionkey = CodeTelKey + userID
-	} else if strings.HasPrefix(CodeEmailKey, req.Aim+"_") {
+	} else if strings.Compare(CodeEmailKey, req.Aim) == 0 {
 		codesessionkey = CodeEmailKey + userID
 	} else {
-		ginutil.Response(ctx, CODE_CHANGE_AIM_INVALID, nil)
+		ginutil.Response(ctx, CODE_AIM_INVALID, nil)
 		return
 	}
 

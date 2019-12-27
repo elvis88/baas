@@ -7,10 +7,10 @@ import (
 const (
 	headerTokenKey = "Authorization"
 	TokenKey       = "baas user secret"
-	CodeLoginKey   = "login_"
-	CodePWDKey     = "pwd_"
-	CodeTelKey     = "tel_"
-	CodeEmailKey   = "email_"
+	CodeLoginKey   = "login"
+	CodePWDKey     = "changepwd"
+	CodeTelKey     = "changetel"
+	CodeEmailKey   = "changeemail"
 )
 
 var (
@@ -37,19 +37,17 @@ var (
 	CHANGE_TEL_FAIL       = errors.New("修改手机号失败")
 	CHANGE_EMAIL_FAIL     = errors.New("修改邮箱失败")
 
-	NAME_INVALID            = errors.New("无效用户名")
-	EMAIL_INVALID           = errors.New("无效邮箱")
-	TEL_INVALID             = errors.New("无效手机号")
-	CODE_UNKOWN_TYPE        = errors.New("未知发送方式")
-	CODE_SEND_FAIL          = errors.New("验证码发送失败")
-	CODE_CHANGE_AIM_INVALID = errors.New("无效修改验证码类型")
-	NOPERMISSION            = errors.New("权限不够")
-	ROLE_WRONG              = errors.New("权限不正确")
+	NAME_INVALID     = errors.New("无效用户名")
+	EMAIL_INVALID    = errors.New("无效邮箱")
+	TEL_INVALID      = errors.New("无效手机号")
+	CODE_UNKOWN_TYPE = errors.New("未知发送方式")
+	CODE_SEND_FAIL   = errors.New("验证码发送失败")
+	CODE_AIM_INVALID = errors.New("无效修改验证码类型")
+	NOPERMISSION     = errors.New("权限不够")
+	ROLE_WRONG       = errors.New("权限不正确")
 
-	ADD_CHAIN_FAIL			= errors.New("添加链失败")
-	CHAINID_NOT_EXIST   	= errors.New("链不存在")
+	ADD_CHAIN_FAIL           = errors.New("添加链失败")
+	CHAINID_NOT_EXIST        = errors.New("链不存在")
 	CHAINID_DEPLOY_NOT_EXIST = errors.New("节点不存在")
-	PARAMS_IS_NOT_ENOUGH 	= errors.New("参数不足")
-
-	ADD_CHAIN_DEPLOY_FAIL   = errors.New("添加链实例失败")
+	PARAMS_IS_NOT_ENOUGH     = errors.New("参数不足")
 )
