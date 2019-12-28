@@ -1,7 +1,10 @@
 package service
 
 import (
+	"errors"
+
 	"github.com/elvis88/baas/common/ginutil"
+	"github.com/elvis88/baas/core/generate"
 	"github.com/elvis88/baas/core/model"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
@@ -70,6 +73,33 @@ func (srv *ChainDeployService) ChainDeployAdd(ctx *gin.Context) {
 		ChainID: chainDeployParams.ChainID,
 		Description: chainDeployParams.Description,
 	}
+
+	chain := &model.Chain{}
+	if err := srv.DB.First(chain, chainDeploy.ChainID).Error; err != nil {
+		ginutil.Response(ctx, CHAINID_NOT_EXIST, err)
+		return
+	}
+	orginChain := &model.Chain{}
+	if err := srv.DB.First(orginChain, chain.OriginID).Error; err != nil {
+		ginutil.Response(ctx, CHAINID_NOT_EXIST, err)
+		return
+	}
+
+	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, orginChain.Name)
+	if spec == nil {
+		ginutil.Response(ctx, ADD_CHAIN_FAIL, errors.New("not support"))
+		return
+	}
+	err = spec.Build()
+	if err != nil {
+		ginutil.Response(ctx, ADD_CHAIN_FAIL, err)
+		return
+	}
+	defer func() {
+		if err != nil {
+			spec.Remove()
+		}
+	}()
 
 	if err = srv.DB.Create(chainDeploy).Error; nil != err {
 		ginutil.Response(ctx, err, nil)
@@ -214,6 +244,32 @@ func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
 	ginutil.Response(ctx, nil, chainDeployVerify)
 }
 
+func (srv *ChainDeployService) ChainGetConfig(c *gin.Context) {
+
+	chainDeploy := &model.ChainDeploy{}
+	user := &model.User{}
+	orgChain := &model.Chain{}
+	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, orgChain.Name)
+	if spec == nil {
+		ginutil.Response(c, nil, nil)
+		return
+	}
+	config, err := spec.GetConfig()
+	if err != nil {
+		ginutil.Response(c, nil, err)
+		return
+	}
+	ginutil.Response(c, nil, config)
+}
+
+func (srv *ChainDeployService) ChainSetConfig(c *gin.Context) {
+
+}
+
+func (srv *ChainDeployService) ChainGetDeploy(c *gin.Context) {
+
+}
+
 // Register ...
 func (srv *ChainDeployService) Register(router *gin.Engine, api *gin.RouterGroup) {
 	chainDeployGroup := api.Group("/chaindeploy")
@@ -221,4 +277,7 @@ func (srv *ChainDeployService) Register(router *gin.Engine, api *gin.RouterGroup
 	chainDeployGroup.POST("/list", srv.ChainDeployList)
 	chainDeployGroup.POST("/delete", srv.ChainDeployDelete)
 	chainDeployGroup.POST("/update", srv.ChainDeployUpdate)
+	chainDeployGroup.POST("/getcoinfig", srv.ChainSetConfig)
+	chainDeployGroup.POST("/setcoinfig", srv.ChainGetConfig)
+	chainDeployGroup.POST("/deploy", srv.ChainGetDeploy)
 }

@@ -5,7 +5,7 @@ import (
 )
 
 func TestFTSpec(t *testing.T) {
-	spec := NewFTSpec("testuser", "ft")
+	spec := NewFTSpec("testuser", "fttest", "ft")
 
 	if err := spec.Build(); err != nil {
 		t.Error(err)
@@ -34,7 +34,7 @@ func TestFTSpec(t *testing.T) {
 }
 
 func TestFTDeploySpec(t *testing.T) {
-	spec := NewFTDeploySpec("testuser", "ft")
+	spec := NewFTDeploySpec("testuser", "fttest", "ft")
 
 	if err := spec.Build(); err != nil {
 		t.Error(err)

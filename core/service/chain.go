@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/elvis88/baas/common/ginutil"
+	"github.com/elvis88/baas/core/generate"
 	"github.com/elvis88/baas/core/model"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
@@ -51,6 +52,28 @@ func (srv *ChainService) ChainAdd(c *gin.Context) {
 		OriginID:    chainInfo.OriginID,
 	}
 
+	orginChain := &model.Chain{}
+	if err := srv.DB.First(orginChain, chain.OriginID).Error; err != nil {
+		ginutil.Response(c, CHAINID_NOT_EXIST, err)
+		return
+	}
+
+	spec := generate.NewAppSpec(user.Name, chain.Name, orginChain.Name)
+	if spec == nil {
+		ginutil.Response(c, ADD_CHAIN_FAIL, "not support "+orginChain.Name)
+		return
+	}
+	err = spec.Build()
+	if err != nil {
+		ginutil.Response(c, ADD_CHAIN_FAIL, err)
+		return
+	}
+	defer func() {
+		if err != nil {
+			spec.Remove()
+		}
+	}()
+
 	// 创建链
 	if err = srv.DB.Create(chain).Error; nil != err {
 		ginutil.Response(c, ADD_CHAIN_FAIL, err)
@@ -93,6 +116,23 @@ func (srv *ChainService) ChainJoin(c *gin.Context) {
 	// 获取账户
 	userService := &UserService{DB: srv.DB}
 	_, user := userService.hasAdminRole(c)
+
+	joinedChain := chain
+	joinedChainUser := &model.User{}
+	srv.DB.First(joinedChainUser, joinedChain.UserID)
+	originChain := &model.Chain{}
+	srv.DB.First(originChain, joinedChain.OriginID)
+
+	spec := generate.NewAppSpec(joinedChainUser.Name, joinedChain.Name, originChain.Name)
+	if spec == nil {
+		ginutil.Response(c, ADD_CHAIN_FAIL, "not support "+originChain.Name)
+		return
+	}
+	err = spec.Join(user.Name)
+	if err != nil {
+		ginutil.Response(c, ADD_CHAIN_FAIL, err)
+		return
+	}
 
 	// 建立联系
 	if err = srv.DB.Model(user).Association("OwnerChains").Append(chain).Error; nil != err {
@@ -282,6 +322,28 @@ func (srv *ChainService) ChainUpdate(c *gin.Context) {
 
 	// 返回更新链结果
 	ginutil.Response(c, nil, chain)
+}
+
+func (srv *ChainService) ChainGetConfig(c *gin.Context) {
+	var err error
+
+	chain := &model.Chain{}
+	user := &model.User{}
+	orgChain := &model.Chain{}
+	spec := generate.NewAppSpec(user.Name, chain.Name, orgChain.Name)
+	if spec == nil {
+		ginutil.Response(c, nil, nil)
+		return
+	}
+	config, err := spec.GetConfig()
+	if err != nil {
+		ginutil.Response(c, nil, err)
+		return
+	}
+	ginutil.Response(c, nil, config)
+}
+
+func (srv *ChainService) ChainSetConfig(c *gin.Context) {
 }
 
 // Register

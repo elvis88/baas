@@ -3,7 +3,6 @@ package generate
 import (
 	"io/ioutil"
 	"os"
-	"strings"
 )
 
 // FTSpec ft block chain
@@ -12,9 +11,10 @@ type FTSpec struct {
 }
 
 // NewFTSpec ft block chain
-func NewFTSpec(account string, name string) *FTSpec {
+func NewFTSpec(account string, name string, org string) *FTSpec {
 	return &FTSpec{
 		ApplicationSpec{
+			Org:             org,
 			Name:            name,
 			Account:         account,
 			CoinfigFileName: FTConfigFileName,
@@ -22,16 +22,14 @@ func NewFTSpec(account string, name string) *FTSpec {
 	}
 }
 
-// SetConfig 设置配置内容
-func (app *FTSpec) SetConfig(config string) error {
+// Build 创建数据目录
+func (app *FTSpec) Build() error {
 	copyto := func(fname, tname string) error {
 		fi, err := os.Stat(fname)
 		if err != nil {
 			return err
 		}
-		if strings.Compare(fi.Name(), app.CoinfigFileName) == 0 {
-			return nil
-		}
+		_ = fi.Name()
 
 		bts, err := ioutil.ReadFile(fname)
 		if err != nil {
@@ -39,7 +37,7 @@ func (app *FTSpec) SetConfig(config string) error {
 		}
 		return ioutil.WriteFile(tname, bts, os.ModePerm)
 	}
-	return app.ApplicationSpec.SetConfig(config, copyto)
+	return app.ApplicationSpec.Build(copyto)
 }
 
 // FTDeploySpec ft block chain deployment
@@ -48,9 +46,10 @@ type FTDeploySpec struct {
 }
 
 // NewFTDeploySpec ft block chain deployment
-func NewFTDeploySpec(account string, name string) *FTDeploySpec {
+func NewFTDeploySpec(account string, name string, org string) *FTDeploySpec {
 	return &FTDeploySpec{
 		ApplicationDeploySpec{
+			Org:             org,
 			Name:            name,
 			Account:         account,
 			CoinfigFileName: FTDeployConfigFileName,
@@ -58,16 +57,14 @@ func NewFTDeploySpec(account string, name string) *FTDeploySpec {
 	}
 }
 
-// SetConfig 设置配置内容
-func (app *FTDeploySpec) SetConfig(config string) error {
+// Build 创建数据目录
+func (app *FTDeploySpec) Build() error {
 	copyto := func(fname, tname string) error {
 		fi, err := os.Stat(fname)
 		if err != nil {
 			return err
 		}
-		if strings.Compare(fi.Name(), app.CoinfigFileName) == 0 {
-			return nil
-		}
+		_ = fi.Name()
 
 		bts, err := ioutil.ReadFile(fname)
 		if err != nil {
@@ -75,5 +72,5 @@ func (app *FTDeploySpec) SetConfig(config string) error {
 		}
 		return ioutil.WriteFile(tname, bts, os.ModePerm)
 	}
-	return app.ApplicationDeploySpec.SetConfig(config, copyto)
+	return app.ApplicationDeploySpec.Build(copyto)
 }

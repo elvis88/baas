@@ -1,11 +1,9 @@
 package generate
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/elvis88/baas/common/util"
 	"github.com/spf13/viper"
@@ -13,14 +11,10 @@ import (
 
 // ApplicationDeploySpec 定义
 type ApplicationDeploySpec struct {
+	Org             string
 	Name            string
 	CoinfigFileName string
 	Account         string
-}
-
-// 程序名
-func (app *ApplicationDeploySpec) basename() string {
-	return strings.Split(app.Name, "_")[0]
 }
 
 // 数据目录路径
@@ -39,17 +33,17 @@ func (app *ApplicationDeploySpec) templatedir() string {
 	if root == "" {
 		root = filepath.Join(os.Getenv("GOPATH"), "src/github.com/elvis88/baas/shared")
 	}
-	return filepath.Join(root, "template", app.basename(), Deployment)
-}
-
-// 配置文件名路径
-func (app *ApplicationDeploySpec) fullconfigfilename() string {
-	return filepath.Join(app.datadir(), fmt.Sprintf("%s_%s", app.Name, app.CoinfigFileName))
+	return filepath.Join(root, "template", app.Org, Deployment)
 }
 
 // Build 创建数据目录
-func (app *ApplicationDeploySpec) Build() error {
-	return util.CreatedDir(app.datadir())
+func (app *ApplicationDeploySpec) Build(copyTo func(tfilename, filename string) error) error {
+	err := util.CreatedDir(app.datadir())
+	if err != nil {
+		return err
+	}
+	// 模本目录 ===> 数据目录
+	return util.CopyDir(app.templatedir(), app.datadir(), copyTo)
 }
 
 // Remove 删除数据目录
@@ -59,22 +53,23 @@ func (app *ApplicationDeploySpec) Remove() error {
 
 // GetConfig 获取配置内容
 func (app *ApplicationDeploySpec) GetConfig() (string, error) {
-	cfilename := app.fullconfigfilename()
-	if !util.Exists(cfilename) {
-		cfilename = filepath.Join(app.templatedir(), app.CoinfigFileName)
-	}
+	cfilename := filepath.Join(app.datadir(), app.CoinfigFileName)
 	config, err := ioutil.ReadFile(cfilename)
 	return string(config), err
 }
 
 // SetConfig 设置配置内容
-func (app *ApplicationDeploySpec) SetConfig(config string, copyTo func(tfilename, filename string) error) error {
-	cfilename := app.fullconfigfilename()
-	if err := ioutil.WriteFile(cfilename, []byte(config), os.ModePerm); err != nil {
-		return err
-	}
-	if copyTo == nil {
-		return nil
-	}
-	return util.CopyDir(app.templatedir(), app.datadir(), copyTo)
+func (app *ApplicationDeploySpec) SetConfig(config string) error {
+	cfilename := filepath.Join(app.datadir(), app.CoinfigFileName)
+	return ioutil.WriteFile(cfilename, []byte(config), os.ModePerm)
+}
+
+// GetConfigFile 获取配置文件
+func (app *ApplicationDeploySpec) GetConfigFile() string {
+	return filepath.Join(app.datadir(), app.CoinfigFileName)
+}
+
+// GetDeployFile 获取配置文件
+func (app *ApplicationDeploySpec) GetDeployFile() string {
+	return filepath.Join(app.datadir(), DeploymentFile)
 }
