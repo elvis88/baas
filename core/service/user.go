@@ -25,9 +25,11 @@ type UserService struct {
 }
 
 // LoginRequest 登陆请求参数
-type LoginRequest struct {
+type UserRequest struct {
+	ID        string `json:"id"`
 	UserName  string `json:"name"`
 	Password  string `json:"pwd"`
+	Nick      string `json:"nick"`
 	Telephone string `json:"phone"`
 	Email     string `json:"email"`
 	Code      string `json:"code"`
@@ -35,9 +37,15 @@ type LoginRequest struct {
 
 // UserLogin 登陆
 func (srv *UserService) UserLogin(ctx *gin.Context) {
-	login := &LoginRequest{}
+	login := &UserRequest{}
 	if err := ctx.ShouldBindJSON(login); err != nil {
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
+		return
+	}
+
+	// 验证参数
+	if ok, errMsg := login.validateLogin(); !ok {
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, errMsg)
 		return
 	}
 
@@ -237,19 +245,35 @@ func (srv *UserService) UserList(ctx *gin.Context) {
 
 // UserAdd 新增用户
 func (srv *UserService) UserAdd(ctx *gin.Context) {
-	usr := &model.User{}
-	if err := ctx.ShouldBindJSON(usr); err != nil {
+	userRequest := &UserRequest{}
+	if err := ctx.ShouldBindJSON(userRequest); err != nil {
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
 
-	password, err := password.CryTo(usr.Password, 12, "default")
-	if err != nil {
+	// 校验用户新增参数
+	if ok, errMsg := userRequest.validateAdd(); !ok {
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, errMsg)
+		return
+	}
 
+	// 用户密码加密
+	password, err := password.CryTo(userRequest.Password, 12, "default")
+	if err != nil {
 		ginutil.Response(ctx, ADD_FAIL, err.Error())
 		return
 	}
-	usr.Password = password
+
+	// 构建新增结构体
+	usr := &model.User{
+		Name:      userRequest.UserName,
+		Password:  password,
+		Nick:      userRequest.Nick,
+		Telephone: userRequest.Telephone,
+		Email:     userRequest.Email,
+	}
+
+	// 添加权限
 	userRole := &model.Role{}
 	if err := srv.DB.Where(&model.Role{
 		Key: "user",
@@ -257,6 +281,7 @@ func (srv *UserService) UserAdd(ctx *gin.Context) {
 		usr.Roles = append(usr.Roles, userRole)
 	}
 
+	// 新建用户
 	if err := srv.DB.Create(&usr).Error; err != nil {
 
 		ginutil.Response(ctx, ADD_FAIL, err.Error())
@@ -342,6 +367,11 @@ func (srv *UserService) UserUpdateRole(ctx *gin.Context) {
 		return
 	}
 
+	if ok, errMsg := req.validateUpdateRole(); !ok {
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, errMsg)
+		return
+	}
+
 	if has, _ := srv.hasAdminRole(ctx); !has {
 		ginutil.Response(ctx, NOPERMISSION, nil)
 		return
@@ -381,6 +411,12 @@ func (srv *UserService) UserChangePWD(ctx *gin.Context) {
 	req := &ChangePWDRequest{}
 	if err := ctx.ShouldBindJSON(req); err != nil {
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
+		return
+	}
+
+	// 验证参数合法性
+	if ok, errMsg := req.validateUpdatePwd(); !ok {
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, errMsg)
 		return
 	}
 
@@ -445,8 +481,13 @@ type ChangeTelRequest struct {
 func (srv *UserService) UserChangeTel(ctx *gin.Context) {
 	req := &ChangeTelRequest{}
 	if err := ctx.ShouldBindJSON(req); err != nil {
-
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
+		return
+	}
+
+	// 验证参数合法性
+	if ok, errMsg := req.validateUpdateTel(); !ok {
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, errMsg)
 		return
 	}
 
@@ -504,8 +545,13 @@ type ChangeEmailRequest struct {
 func (srv *UserService) UserChangeEmail(ctx *gin.Context) {
 	req := &ChangeEmailRequest{}
 	if err := ctx.ShouldBindJSON(req); err != nil {
-
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
+		return
+	}
+
+	// 验证参数合法性
+	if ok, errMsg := req.validateUpdateEmail(); !ok {
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, errMsg)
 		return
 	}
 
@@ -570,6 +616,12 @@ func (srv *UserService) UserLoginCode(ctx *gin.Context) {
 		return
 	}
 
+	// 验证参数合法性
+	if ok, errMsg := req.validateGetCode(); !ok {
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, errMsg)
+		return
+	}
+
 	if strings.Compare(req.Aim, CodeLoginKey) != 0 {
 		ginutil.Response(ctx, CODE_AIM_INVALID, nil)
 		return
@@ -606,11 +658,19 @@ func (srv *UserService) UserLoginCode(ctx *gin.Context) {
 	return
 }
 
+
+
 // UserChangeCode 获取验证码
 func (srv *UserService) UserChangeCode(ctx *gin.Context) {
 	req := &CodeRequest{}
 	if err := ctx.ShouldBindJSON(req); err != nil {
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err.Error())
+		return
+	}
+
+	// 验证参数合法性
+	if ok, errMsg := req.validateGetCode(); !ok {
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, errMsg)
 		return
 	}
 
@@ -735,8 +795,8 @@ func (srv *UserService) Register(router *gin.Engine, api *gin.RouterGroup) {
 	api.POST("/user/logout", srv.UserLogout)
 	api.POST("/user/info", srv.UserInfo)
 	api.POST("/user/list", srv.UserList)
-	api.POST("/user/delete", srv.UserDelete)
-	api.POST("/user/update", srv.UserUpdate)
+	//api.POST("/user/delete", srv.UserDelete)
+	//api.POST("/user/update", srv.UserUpdate)
 	api.POST("/user/updaterole", srv.UserUpdateRole)
 	api.POST("/user/changepwd", srv.UserChangePWD)
 	api.POST("/user/changetel", srv.UserChangeTel)

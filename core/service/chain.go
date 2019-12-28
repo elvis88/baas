@@ -12,15 +12,14 @@ type ChainService struct {
 	DB *gorm.DB
 }
 
-// Register
-func (srv *ChainService) Register(router *gin.Engine, api *gin.RouterGroup) {
-	chain := api.Group("/chain")
-	chain.POST("/add", srv.ChainAdd)
-	chain.POST("/join", srv.ChainJoin)
-	chain.POST("/list", srv.ChainList)
-	chain.POST("/delete", srv.ChainDelete)
-	chain.POST("/exit", srv.ChainExit)
-	chain.POST("/update", srv.ChainUpdate)
+// chainValidate
+type requestChainParam struct {
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	Url         string `json:"url"`
+	Public      bool   `json:"public"`
+	OriginID    uint   `json:"originID"`
+	Description string `json:"description"`
 }
 
 // 添加链
@@ -283,4 +282,15 @@ func (srv *ChainService) ChainUpdate(c *gin.Context) {
 
 	// 返回更新链结果
 	ginutil.Response(c, nil, chain)
+}
+
+// Register
+func (srv *ChainService) Register(router *gin.Engine, api *gin.RouterGroup) {
+	chain := api.Group("/chain")
+	chain.POST("/add", srv.ChainAdd)
+	chain.POST("/join", srv.ChainJoin)
+	chain.POST("/list", srv.ChainList)
+	chain.POST("/delete", srv.ChainDelete)
+	chain.POST("/exit", srv.ChainExit)
+	chain.POST("/update", srv.ChainUpdate)
 }

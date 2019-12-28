@@ -12,6 +12,17 @@ type ChainDeployService struct {
 	DB *gorm.DB
 }
 
+
+// chainDeployValidate
+type requestChainDeployParams struct {
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	UserID      string `json:"userID"`
+	ChainID     uint   `json:"chainID"`
+	Description string `json:"desc"`
+}
+
+
 func (srv *ChainDeployService) userHaveChain(userID, chainID uint) (b bool, err error) {
 	var chain model.Chain
 
@@ -29,9 +40,15 @@ func (srv *ChainDeployService) userHaveChain(userID, chainID uint) (b bool, err 
 func (srv *ChainDeployService) ChainDeployAdd(ctx *gin.Context) {
 	// 获取请求参数
 	var err error
-	chainDeploy := &model.ChainDeploy{}
-	if err = ctx.ShouldBindJSON(chainDeploy); nil != err {
+	chainDeployParams := &requestChainDeployParams{}
+	if err = ctx.ShouldBindJSON(chainDeployParams); nil != err {
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err)
+		return
+	}
+
+	// 验证参数
+	if ok, errMsg := chainDeployParams.validateChainDeployAdd(); !ok {
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, errMsg)
 		return
 	}
 
@@ -40,13 +57,19 @@ func (srv *ChainDeployService) ChainDeployAdd(ctx *gin.Context) {
 	_, user := userService.hasAdminRole(ctx)
 
 	// 验证用户是否拥有链
-	ok, err := srv.userHaveChain(user.ID, chainDeploy.ChainID)
+	ok, err := srv.userHaveChain(user.ID, chainDeployParams.ChainID)
 	if nil != err || !ok {
-		//ginutil.Response(ctx, ADD_CHAIN_DEPLOY_FAIL, err)
+		ginutil.Response(ctx, CHAINID_DEPLOY_ADD_FAIL, err)
 		return
 	}
 
-	chainDeploy.UserID = user.ID
+	// 添加链实例
+	chainDeploy := &model.ChainDeploy{
+		Name: chainDeployParams.Name,
+		UserID: user.ID,
+		ChainID: chainDeployParams.ChainID,
+		Description: chainDeployParams.Description,
+	}
 
 	if err = srv.DB.Create(chainDeploy).Error; nil != err {
 		ginutil.Response(ctx, err, nil)
@@ -100,17 +123,20 @@ func (srv *ChainDeployService) ChainDeployList(ctx *gin.Context) {
 func (srv *ChainDeployService) ChainDeployDelete(ctx *gin.Context) {
 	// 获取请求参数
 	var err error
-	chainDeploy := &model.ChainDeploy{}
-	if err = ctx.ShouldBindJSON(chainDeploy); nil != err {
+	chainDeployParams := &requestChainDeployParams{}
+	if err = ctx.ShouldBindJSON(chainDeployParams); nil != err {
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err)
 		return
 	}
 
-	// 指定id获取实例数据
-	if chainDeploy.ID == 0 {
-		ginutil.Response(ctx, PARAMS_IS_NOT_ENOUGH, nil)
+	// 验证参数
+	if ok, errMsg := chainDeployParams.validateChainDeployID(); !ok {
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, errMsg)
 		return
 	}
+
+	// 指定id获取实例数据
+	chainDeploy := &model.ChainDeploy{Model: model.Model{ID: chainDeployParams.ID}}
 	if err = srv.DB.First(chainDeploy).Error; nil != err {
 		ginutil.Response(ctx, CHAINID_DEPLOY_NOT_EXIST, nil)
 		return
@@ -139,20 +165,20 @@ func (srv *ChainDeployService) ChainDeployDelete(ctx *gin.Context) {
 func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
 	// 获取请求参数
 	var err error
-	chainDeploy := &model.ChainDeploy{}
-	if err = ctx.ShouldBindJSON(chainDeploy); nil != err {
+	chainDeployParams := &requestChainDeployParams{}
+	if err = ctx.ShouldBindJSON(chainDeployParams); nil != err {
 		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err)
 		return
 	}
 
-	// 如果实例id不存在则返回
-	if chainDeploy.ID == 0 {
-		ginutil.Response(ctx, PARAMS_IS_NOT_ENOUGH, nil)
+	// 验证参数
+	if ok, errMsg := chainDeployParams.validateChainDeployUpdate(); !ok {
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, errMsg)
 		return
 	}
 
 	// 获取该ID对应的数据
-	chainDeployVerify := &model.ChainDeploy{Model: model.Model{ID: chainDeploy.ID}}
+	chainDeployVerify := &model.ChainDeploy{Model: model.Model{ID: chainDeployParams.ID}}
 	if err = srv.DB.First(chainDeployVerify).Error; nil != err {
 		ginutil.Response(ctx, CHAINID_DEPLOY_NOT_EXIST, nil)
 		return
@@ -169,20 +195,23 @@ func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
 	}
 
 	// 存储更新的结果
-	updateDB := srv.DB.Model(chainDeploy).Updates(&model.Chain{Name: chainDeploy.Name, Description: chainDeploy.Description})
+	updateDB := srv.DB.Model(chainDeployVerify).Updates(&model.Chain{
+		Name: chainDeployParams.Name,
+		Description: chainDeployParams.Description,
+	})
 	if err = updateDB.Error; nil != err {
 		ginutil.Response(ctx, err, nil)
 		return
 	}
 
 	// 获取最新链实例数据
-	if err = srv.DB.First(chainDeploy).Error; nil != err {
+	if err = srv.DB.First(chainDeployVerify).Error; nil != err {
 		ginutil.Response(ctx, CHAINID_DEPLOY_NOT_EXIST, nil)
 		return
 	}
 
 	// 返回更新后的数据
-	ginutil.Response(ctx, nil, chainDeploy)
+	ginutil.Response(ctx, nil, chainDeployVerify)
 }
 
 // Register ...
