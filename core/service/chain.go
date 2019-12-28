@@ -9,14 +9,14 @@ import (
 
 // ChainService 区块链配置表
 type ChainService struct {
-	DB        *gorm.DB
+	DB *gorm.DB
 }
 
 // Register
 func (srv *ChainService) Register(router *gin.RouterGroup) {
 	chain := router.Group("/chain")
 	chain.POST("/add", srv.ChainAdd)
-	chain.POST("/join",srv.ChainJoin)
+	chain.POST("/join", srv.ChainJoin)
 	chain.POST("/list", srv.ChainList)
 	chain.POST("/delete", srv.ChainDelete)
 	chain.POST("/exit", srv.ChainExit)
@@ -28,16 +28,29 @@ func (srv *ChainService) ChainAdd(c *gin.Context) {
 	var err error
 
 	// 获取主体信息
-	var chain = &model.Chain{}
-	if err = c.ShouldBindJSON(chain); nil != err {
+	var chainInfo = &requestChainParam{}
+	if err = c.ShouldBindJSON(chainInfo); nil != err {
 		ginutil.Response(c, REQUEST_PARAM_INVALID, err)
+		return
+	}
+
+	// 校验参数
+	if ok, errMsg := chainInfo.validateChainAdd(); !ok {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, errMsg)
 		return
 	}
 
 	// 设置用户ID
 	userService := &UserService{DB: srv.DB}
 	_, user := userService.hasAdminRole(c)
-	chain.UserID = user.ID
+	chain := &model.Chain{
+		UserID:      user.ID,
+		Name:        chainInfo.Name,
+		Url:         chainInfo.Url,
+		Description: chainInfo.Description,
+		Public:      chainInfo.Public,
+		OriginID:    chainInfo.OriginID,
+	}
 
 	// 创建链
 	if err = srv.DB.Create(chain).Error; nil != err {
@@ -59,20 +72,21 @@ func (srv *ChainService) ChainJoin(c *gin.Context) {
 	var err error
 
 	// 获取主体信息
-	var chain = &model.Chain{}
-	if err = c.ShouldBindJSON(chain); nil != err {
+	var chainInfo = &requestChainParam{}
+	if err = c.ShouldBindJSON(chainInfo); nil != err {
 		ginutil.Response(c, REQUEST_PARAM_INVALID, err)
 		return
 	}
 
-	// 判断链ID是否存在
-	if chain.ID == 0 {
-		ginutil.Response(c, REQUEST_PARAM_INVALID, err)
+	// 校验参数
+	if ok, errMsg := chainInfo.validateChainID(); !ok {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, errMsg)
 		return
 	}
 
 	// 查询链是否存在
-	if err = srv.DB.First(chain).Error; nil != err{
+	chain := &model.Chain{Model: model.Model{ID: chainInfo.ID}}
+	if err = srv.DB.First(chain).Error; nil != err {
 		ginutil.Response(c, CHAINID_NOT_EXIST, err)
 		return
 	}
@@ -128,23 +142,24 @@ func (srv *ChainService) ChainList(c *gin.Context) {
 }
 
 // 删除链
-func (srv *ChainService)ChainDelete(c *gin.Context) {
+func (srv *ChainService) ChainDelete(c *gin.Context) {
 	var err error
 
 	// 获取主体信息
-	var chain = &model.Chain{}
-	if err = c.ShouldBindJSON(chain); nil != err {
+	var chainInfo = &requestChainParam{}
+	if err = c.ShouldBindJSON(chainInfo); nil != err {
 		ginutil.Response(c, REQUEST_PARAM_INVALID, nil)
 		return
 	}
 
-	// 判断链ID是否存在
-	if chain.ID == 0 {
-		ginutil.Response(c, REQUEST_PARAM_INVALID, err)
+	// 校验参数
+	if ok, errMsg := chainInfo.validateChainID(); !ok {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, errMsg)
 		return
 	}
 
 	// 查询链信息
+	chain := &model.Chain{Model: model.Model{ID: chainInfo.ID}}
 	if err = srv.DB.First(chain).Error; nil != err {
 		ginutil.Response(c, CHAINID_NOT_EXIST, err)
 		return
@@ -175,20 +190,21 @@ func (srv *ChainService) ChainExit(c *gin.Context) {
 	var err error
 
 	// 获取主体信息
-	var chain = &model.Chain{}
-	if err = c.ShouldBindJSON(chain); nil != err {
+	var chainInfo = &requestChainParam{}
+	if err = c.ShouldBindJSON(chainInfo); nil != err {
 		ginutil.Response(c, REQUEST_PARAM_INVALID, err)
 		return
 	}
 
-	// 判断链ID是否存在
-	if chain.ID == 0 {
-		ginutil.Response(c, REQUEST_PARAM_INVALID, err)
+	// 校验参数
+	if ok, errMsg := chainInfo.validateChainID(); !ok {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, errMsg)
 		return
 	}
 
-	// 查询链是否存在
-	if err = srv.DB.First(chain).Error; nil != err{
+	// 查询链信息
+	chain := &model.Chain{Model: model.Model{ID: chainInfo.ID}}
+	if err = srv.DB.First(chain).Error; nil != err {
 		ginutil.Response(c, CHAINID_NOT_EXIST, err)
 		return
 	}
@@ -196,6 +212,12 @@ func (srv *ChainService) ChainExit(c *gin.Context) {
 	// 获取账户信息
 	userService := &UserService{DB: srv.DB}
 	_, user := userService.hasAdminRole(c)
+
+	// 如果是该用户是创建者（不可退出）
+	if user.ID == chain.UserID {
+		ginutil.Response(c, DELETE_FAIL, err)
+		return
+	}
 
 	// 删除联系
 	if err = srv.DB.Model(user).Association("OwnerChains").Delete(chain).Error; nil != err {
@@ -210,21 +232,21 @@ func (srv *ChainService) ChainExit(c *gin.Context) {
 func (srv *ChainService) ChainUpdate(c *gin.Context) {
 	// 读取主体信息
 	var err error
-	var chain = &model.Chain{}
-	if err = c.ShouldBindJSON(chain); nil != err {
+	var chainInfo = &requestChainParam{}
+	if err = c.ShouldBindJSON(chainInfo); nil != err {
 		ginutil.Response(c, REQUEST_PARAM_INVALID, nil)
 		return
 	}
 
-	// 判断链ID是否存在
-	if chain.ID == 0 {
-		ginutil.Response(c, REQUEST_PARAM_INVALID, err)
+	// 校验ID是否存在
+	if ok, errMsg := chainInfo.validateChainUpdate(); !ok {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, errMsg)
 		return
 	}
 
 	// 获取链对应的账户ID
-	chainVerify := &model.Chain{Model:model.Model{ID: chain.ID}}
-	if err = srv.DB.First(chainVerify).Error; nil != err{
+	chainVerify := &model.Chain{Model: model.Model{ID: chainInfo.ID}}
+	if err = srv.DB.First(chainVerify).Error; nil != err {
 		ginutil.Response(c, CHAINID_NOT_EXIST, nil)
 		return
 	}
@@ -240,12 +262,13 @@ func (srv *ChainService) ChainUpdate(c *gin.Context) {
 	}
 
 	// 更新链
+	chain := &model.Chain{Model: model.Model{ID: chainInfo.ID}}
 	updateDB := srv.DB.Model(chain).Updates(
 		&model.Chain{
-			Name: chain.Name,
-			Url: chain.Url,
-			Public:chain.Public,
-			Description:chain.Description,
+			Name:        chainInfo.Name,
+			Url:         chainInfo.Url,
+			Public:      chainInfo.Public,
+			Description: chainInfo.Description,
 		})
 	if err = updateDB.Error; nil != err {
 		ginutil.Response(c, err, nil)

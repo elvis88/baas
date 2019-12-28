@@ -46,6 +46,7 @@ type Chain struct {
 	Url         string
 	Description string `gorm:"column:desc"`
 	Public      bool
+	OriginID    uint
 
 	UserID      uint   `gorm:"column:owner_id"`
 }
