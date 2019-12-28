@@ -13,8 +13,8 @@ type ChainService struct {
 }
 
 // Register
-func (srv *ChainService) Register(router *gin.RouterGroup) {
-	chain := router.Group("/chain")
+func (srv *ChainService) Register(router *gin.Engine, api *gin.RouterGroup) {
+	chain := api.Group("/chain")
 	chain.POST("/add", srv.ChainAdd)
 	chain.POST("/join", srv.ChainJoin)
 	chain.POST("/list", srv.ChainList)

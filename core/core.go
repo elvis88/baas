@@ -10,7 +10,7 @@ import (
 )
 
 type service interface {
-	Register(router *gin.RouterGroup)
+	Register(router *gin.Engine, api *gin.RouterGroup)
 }
 
 // Server 提供服务
@@ -43,13 +43,31 @@ func Server(router *gin.Engine, db *gorm.DB) error {
 			return err
 		}
 	}
-	// 初始Amdin用户
+	// 初始Amdin用户 & chain
+	ftChain := &model.Chain{
+		Name:        "ft",
+		Url:         "https://github.com/fractalplatform/fractal",
+		Description: "fractalplatform ",
+		Public:      true,
+	}
+	fttestChain := &model.Chain{
+		Name:        "fttest",
+		Url:         "https://github.com/fractalplatform/fractal",
+		Description: "fractalplatform",
+		Public:      true,
+	}
+	chains := []*model.Chain{
+		ftChain,
+		fttestChain,
+	}
 	adminUsr := &model.User{
 		Name:     "admin",
 		Password: "123456",
 		Roles: []*model.Role{
 			adminRole,
 		},
+		Chains:      chains,
+		OwnerChains: chains,
 	}
 
 	// Admin 密码加密
@@ -95,7 +113,7 @@ func Server(router *gin.Engine, db *gorm.DB) error {
 	ginutil.UseSession(router)
 	apiv1 := router.Group("api/v1")
 	for _, service := range services {
-		service.Register(apiv1)
+		service.Register(router, apiv1)
 	}
 	return nil
 }

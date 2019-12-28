@@ -6,24 +6,31 @@
 
 set -u
 
+# constant variable
+BASS_ROOT="http://localhost:8080/api/v1"
+RELEASE_ROOT="https://github.com/fractalplatform"
 RELEASE_NAME="fractal"
 RELEASE_VERSION="1.0.0"
 RELEASE_EXT="tar.gz"
-RELEASE_ROOT="https://github.com/fractalplatform"
-BINARY_NAME="ft"
-RELEASE_CONFIG_ROOT="http://127.0.0.1"
-DEPLOY_CONFIG_ROOT="http://127.0.0.1"
-# 变量
+BINARY_NAME="ft" 
 RELEASE_CONFIG="genesis.json"
 DEPLOY_CONFIG="config.yaml"
-DEPLOY_NAME="ft"
-# 变量
-DEPLOY_ARG="" #"-g ${RELEASE_CONFIG} -c ${DEPLOY_CONFIG}"
-DEPLOY_DIR=${HOME}/.${BINARY_NAME}/${DEPLOY_NAME}
-DEPLOY_CMD=${DEPLOY_DIR}/$BINARY_NAME ${DEPLOY_ARG}
+
+# template variable
+DEPLOY_USER="testuser" # node user
+DEPLOY_NAME="ft"  # node name
+
+# derived variable
+BINARY_RELEASE_CONFIG="${DEPLOY_NAME}_${RELEASE_CONFIG}"
+BINARY_DEPLOY_CONFIG="${DEPLOY_NAME}_${DEPLOY_CONFIG}"
+RELEASE_CONFIG_ROOT="${BASS_ROOT}/file/${DEPLOY_NAME}/application"
+DEPLOY_CONFIG_ROOT="${BASS_ROOT}/file/${DEPLOY_NAME}/deployment"
+DEPLOY_DIR="${HOME}/.baas/${BINARY_NAME}/${DEPLOY_NAME}"
+BINARY_ARG="-g ${DEPLOY_DIR}/${BINARY_RELEASE_CONFIG} -c ${DEPLOY_DIR}/${BINARY_DEPLOY_CONFIG}"
+DEPLOY_CMD="${DEPLOY_DIR}/$BINARY_NAME ${BINARY_ARG}"
 
 say() {
-    printf "${DEPLOY_NAME}: %s\n" "$1"
+    printf "${DEPLOY_USER} ${DEPLOY_NAME}: %s\n" "$1"
 }
 
 err() {
@@ -70,7 +77,7 @@ downloader() {
     if [ "$1" = --check ]; then
         need_cmd "$_dld"
     elif [ "$_dld" = curl ]; then
-        if ! check_help_for curl --proto --tlsv1.2; then
+        if ! [[ $1 =~ https ]] || ! check_help_for curl --proto --tlsv1.2; then
             echo "Warning: Not forcing TLS v1.2, this is potentially less secure"
             curl --silent --show-error --fail --location "$1" --output "$2"
         else
@@ -78,7 +85,7 @@ downloader() {
             curl --proto '=https' --tlsv1.2 --silent --show-error --fail --location "$1" --output "$2"
         fi
     elif [ "$_dld" = wget ]; then
-        if ! check_help_for wget --https-only --secure-protocol; then
+        if [[ $1 =~ https ]] || ! check_help_for wget --https-only --secure-protocol; then
             echo "Warning: Not forcing TLS v1.2, this is potentially less secure"
             wget "$1" -O "$2"
         else
@@ -126,7 +133,7 @@ EOF
 }
 
 start() {
-    ensure ps aux | grep ${DEPLOY_CMD} | grep -v grep > /dev/null
+    ensure ps aux | grep "${DEPLOY_CMD}" | grep -v grep > /dev/null
     if [ $? -eq 0 ] 
     then
         err "already runing....."
@@ -141,11 +148,18 @@ start() {
     
     ensure mkdir -p "${DEPLOY_DIR}"
     if [ ! -f ${DEPLOY_DIR}/$_file ]; then
-        downloader $_url ${DEPLOY_DIR}/$_file
+        ensure downloader $_url ${DEPLOY_DIR}/$_file
         ensure tar -xzf ${DEPLOY_DIR}/$_file -C ${DEPLOY_DIR}
     fi
 
     # TODO
+    _file="${BINARY_RELEASE_CONFIG}"
+    _url="${RELEASE_CONFIG_ROOT}/${_file}"
+    ensure downloader $_url ${DEPLOY_DIR}/$_file
+
+    _file="${BINARY_DEPLOY_CONFIG}"
+    _url="${DEPLOY_CONFIG_ROOT}/${_file}"
+    ensure downloader $_url ${DEPLOY_DIR}/$_file
 
     local _timestamp="$(date "+%Y%m%d%H%M%S")"
     ensure  ${DEPLOY_CMD} > ${DEPLOY_DIR}/${_timestamp}_${DEPLOY_NAME}.log 2>&1 &

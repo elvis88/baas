@@ -16,8 +16,8 @@ func (srv *ChainDeployService) userHaveChain(userID, chainID uint) (b bool, err 
 	var chain model.Chain
 
 	// 查看用户是否和该链有关联
-	if err = srv.DB.Model(&model.User{Model: model.Model{ID:userID}}).
-		Where(&model.Chain{Model: model.Model{ID:chainID}}).
+	if err = srv.DB.Model(&model.User{Model: model.Model{ID: userID}}).
+		Where(&model.Chain{Model: model.Model{ID: chainID}}).
 		Association("OwnerChains").Find(&chain).Error; nil != err || chain.ID == 0 {
 		return false, err
 	}
@@ -31,7 +31,7 @@ func (srv *ChainDeployService) ChainDeployAdd(ctx *gin.Context) {
 	var err error
 	chainDeploy := &model.ChainDeploy{}
 	if err = ctx.ShouldBindJSON(chainDeploy); nil != err {
-		ginutil.Response(ctx, REQUEST_PARAM_INVALID ,err)
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err)
 		return
 	}
 
@@ -42,7 +42,7 @@ func (srv *ChainDeployService) ChainDeployAdd(ctx *gin.Context) {
 	// 验证用户是否拥有链
 	ok, err := srv.userHaveChain(user.ID, chainDeploy.ChainID)
 	if nil != err || !ok {
-		ginutil.Response(ctx, ADD_CHAIN_DEPLOY_FAIL, err)
+		//ginutil.Response(ctx, ADD_CHAIN_DEPLOY_FAIL, err)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (srv *ChainDeployService) ChainDeployList(ctx *gin.Context) {
 	// 获取请求参数
 	var err error
 	if err = ctx.ShouldBindJSON(req); nil != err {
-		ginutil.Response(ctx, REQUEST_PARAM_INVALID ,err)
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err)
 		return
 	}
 
@@ -102,7 +102,7 @@ func (srv *ChainDeployService) ChainDeployDelete(ctx *gin.Context) {
 	var err error
 	chainDeploy := &model.ChainDeploy{}
 	if err = ctx.ShouldBindJSON(chainDeploy); nil != err {
-		ginutil.Response(ctx, REQUEST_PARAM_INVALID ,err)
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err)
 		return
 	}
 
@@ -115,7 +115,6 @@ func (srv *ChainDeployService) ChainDeployDelete(ctx *gin.Context) {
 		ginutil.Response(ctx, CHAINID_DEPLOY_NOT_EXIST, nil)
 		return
 	}
-
 
 	// 获取账户信息
 	userService := &UserService{DB: srv.DB}
@@ -142,7 +141,7 @@ func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
 	var err error
 	chainDeploy := &model.ChainDeploy{}
 	if err = ctx.ShouldBindJSON(chainDeploy); nil != err {
-		ginutil.Response(ctx, REQUEST_PARAM_INVALID ,err)
+		ginutil.Response(ctx, REQUEST_PARAM_INVALID, err)
 		return
 	}
 
@@ -153,7 +152,7 @@ func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
 	}
 
 	// 获取该ID对应的数据
-	chainDeployVerify := &model.ChainDeploy{Model: model.Model{ID:chainDeploy.ID}}
+	chainDeployVerify := &model.ChainDeploy{Model: model.Model{ID: chainDeploy.ID}}
 	if err = srv.DB.First(chainDeployVerify).Error; nil != err {
 		ginutil.Response(ctx, CHAINID_DEPLOY_NOT_EXIST, nil)
 		return
@@ -170,7 +169,7 @@ func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
 	}
 
 	// 存储更新的结果
-	updateDB := srv.DB.Model(chainDeploy).Updates(&model.Chain{Name:chainDeploy.Name, Description:chainDeploy.Description})
+	updateDB := srv.DB.Model(chainDeploy).Updates(&model.Chain{Name: chainDeploy.Name, Description: chainDeploy.Description})
 	if err = updateDB.Error; nil != err {
 		ginutil.Response(ctx, err, nil)
 		return
@@ -187,7 +186,7 @@ func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
 }
 
 // Register ...
-func (srv *ChainDeployService) Register(api *gin.RouterGroup) {
+func (srv *ChainDeployService) Register(router *gin.Engine, api *gin.RouterGroup) {
 	chainDeployGroup := api.Group("/chaindeploy")
 	chainDeployGroup.POST("/add", srv.ChainDeployAdd)
 	chainDeployGroup.POST("/list", srv.ChainDeployList)
