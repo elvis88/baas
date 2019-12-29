@@ -756,7 +756,7 @@ func (srv *UserService) UserGetFile(ctx *gin.Context) {
 	cnt := 0
 	// 判断 nodename 是否是自己创建
 	if strings.Compare(action, generate.Application) == 0 {
-		if err := srv.DB.Where(&model.Chain{
+		if err := srv.DB.Model(&model.ChainDeploy{}).Where(&model.Chain{
 			Name:   nodename,
 			UserID: cusr.ID,
 		}).Count(&cnt).Error; err != nil {
@@ -764,7 +764,7 @@ func (srv *UserService) UserGetFile(ctx *gin.Context) {
 			return
 		}
 	} else if strings.Compare(action, generate.Deployment) == 0 {
-		if err := srv.DB.Where(&model.ChainDeploy{
+		if err := srv.DB.Model(&model.ChainDeploy{}).Where(&model.ChainDeploy{
 			Name:   nodename,
 			UserID: cusr.ID,
 		}).Count(&cnt).Error; err != nil {

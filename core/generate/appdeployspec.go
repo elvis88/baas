@@ -20,7 +20,7 @@ type ApplicationDeploySpec struct {
 // 数据目录路径
 func (app *ApplicationDeploySpec) datadir() string {
 	dirPath := filepath.Join(app.Account, app.Name, Deployment)
-	root := viper.GetString("baas.shared")
+	root := filepath.Join(os.Getenv("GOPATH"), viper.GetString("baas.shared"))
 	if root == "" {
 		root = filepath.Join(os.Getenv("GOPATH"), "src/github.com/elvis88/baas/shared")
 	}
@@ -29,7 +29,7 @@ func (app *ApplicationDeploySpec) datadir() string {
 
 // 模本目录路径
 func (app *ApplicationDeploySpec) templatedir() string {
-	root := viper.GetString("baas.shared")
+	root := filepath.Join(os.Getenv("GOPATH"), viper.GetString("baas.shared"))
 	if root == "" {
 		root = filepath.Join(os.Getenv("GOPATH"), "src/github.com/elvis88/baas/shared")
 	}

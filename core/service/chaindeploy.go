@@ -79,13 +79,13 @@ func (srv *ChainDeployService) ChainDeployAdd(ctx *gin.Context) {
 		ginutil.Response(ctx, CHAINID_NOT_EXIST, err)
 		return
 	}
-	orginChain := &model.Chain{}
-	if err := srv.DB.First(orginChain, chain.OriginID).Error; err != nil {
+	originChain := &model.Chain{}
+	if err := srv.DB.First(originChain, chain.OriginID).Error; err != nil {
 		ginutil.Response(ctx, CHAINID_NOT_EXIST, err)
 		return
 	}
 
-	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, orginChain.Name)
+	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, originChain.Name)
 	if spec == nil {
 		ginutil.Response(ctx, ADD_CHAIN_FAIL, errors.New("not support"))
 		return
@@ -166,8 +166,8 @@ func (srv *ChainDeployService) ChainDeployDelete(ctx *gin.Context) {
 	}
 
 	// 指定id获取实例数据
-	chainDeploy := &model.ChainDeploy{Model: model.Model{ID: chainDeployParams.ID}}
-	if err = srv.DB.First(chainDeploy).Error; nil != err {
+	chainDeploy := &model.ChainDeploy{}
+	if err = srv.DB.First(chainDeploy, chainDeployParams.ID).Error; nil != err {
 		ginutil.Response(ctx, CHAINID_DEPLOY_NOT_EXIST, nil)
 		return
 	}
@@ -208,8 +208,8 @@ func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
 	}
 
 	// 获取该ID对应的数据
-	chainDeployVerify := &model.ChainDeploy{Model: model.Model{ID: chainDeployParams.ID}}
-	if err = srv.DB.First(chainDeployVerify).Error; nil != err {
+	chainDeployVerify := &model.ChainDeploy{}
+	if err = srv.DB.First(chainDeployVerify, chainDeployParams.ID).Error; nil != err {
 		ginutil.Response(ctx, CHAINID_DEPLOY_NOT_EXIST, nil)
 		return
 	}
@@ -235,7 +235,7 @@ func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
 	}
 
 	// 获取最新链实例数据
-	if err = srv.DB.First(chainDeployVerify).Error; nil != err {
+	if err = srv.DB.First(chainDeployVerify, chainDeployParams.ID).Error; nil != err {
 		ginutil.Response(ctx, CHAINID_DEPLOY_NOT_EXIST, nil)
 		return
 	}
@@ -244,8 +244,8 @@ func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
 	ginutil.Response(ctx, nil, chainDeployVerify)
 }
 
-func (srv *ChainDeployService) ChainGetConfig(c *gin.Context) {
-
+// 用户获得config内容
+func (srv *ChainDeployService) ChainDeployGetConfig(c *gin.Context) {
 	chainDeploy := &model.ChainDeploy{}
 	user := &model.User{}
 	orgChain := &model.Chain{}
@@ -262,11 +262,13 @@ func (srv *ChainDeployService) ChainGetConfig(c *gin.Context) {
 	ginutil.Response(c, nil, config)
 }
 
-func (srv *ChainDeployService) ChainSetConfig(c *gin.Context) {
+// 用户修改config内容
+func (srv *ChainDeployService) ChainDeploySetConfig(c *gin.Context) {
 
 }
 
-func (srv *ChainDeployService) ChainGetDeploy(c *gin.Context) {
+// 用户获得节点shell
+func (srv *ChainDeployService) ChainDeployGet(c *gin.Context) {
 
 }
 
@@ -277,7 +279,7 @@ func (srv *ChainDeployService) Register(router *gin.Engine, api *gin.RouterGroup
 	chainDeployGroup.POST("/list", srv.ChainDeployList)
 	chainDeployGroup.POST("/delete", srv.ChainDeployDelete)
 	chainDeployGroup.POST("/update", srv.ChainDeployUpdate)
-	chainDeployGroup.POST("/getcoinfig", srv.ChainSetConfig)
-	chainDeployGroup.POST("/setcoinfig", srv.ChainGetConfig)
-	chainDeployGroup.POST("/deploy", srv.ChainGetDeploy)
+	chainDeployGroup.POST("/getcoinfig", srv.ChainDeploySetConfig)
+	chainDeployGroup.POST("/setcoinfig", srv.ChainDeployGetConfig)
+	chainDeployGroup.POST("/deploy", srv.ChainDeployGet)
 }

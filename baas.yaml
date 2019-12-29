@@ -8,6 +8,6 @@ baas:
       ip: 127.0.0.1
       port: 3306
       database: baas
-    shared: $GOPATH/src/github.com/elvis88/baas/shared
+    shared: src/github.com/elvis88/baas/shared
     config:
       port: 8080
