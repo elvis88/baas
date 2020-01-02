@@ -461,4 +461,6 @@ func (srv *ChainService) Register(router *gin.Engine, api *gin.RouterGroup) {
 	chain.POST("/delete", srv.ChainDelete)
 	chain.POST("/exit", srv.ChainExit)
 	chain.POST("/update", srv.ChainUpdate)
+	chain.POST("/getconfig", srv.ChainGetConfig)
+	chain.POST("/setconfig", srv.ChainSetConfig)
 }

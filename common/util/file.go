@@ -1,7 +1,6 @@
 package util
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -50,9 +49,6 @@ func RemoveDir(dir string) error {
 // CopyDir 复制文件夹
 func CopyDir(fpathname, tpathname string, copyTo func(tfilename, filename string) error) error {
 	rd, err := ioutil.ReadDir(fpathname)
-	fmt.Println(err)
-	fmt.Println(fpathname)
-	fmt.Println(tpathname)
 	for _, fi := range rd {
 		if fi.IsDir() {
 			if err := CreatedDir(filepath.Join(tpathname, fi.Name())); err != nil {
