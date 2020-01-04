@@ -18,92 +18,7 @@ func executeValidation(data interface{}, rules, messages govalidator.MapData) (b
 	return true, nil
 }
 
-func (r *requestChainParam) validateChainAdd() (bool, *string) {
-	rules := govalidator.MapData{
-		"name":     []string{"required"},
-		"url":      []string{"url"},
-		"originID": []string{"required"},
-	}
-
-	messages := govalidator.MapData{
-		"name":     []string{"required:名字不能为空"},
-		"url":      []string{"url:Url格式不正确"},
-		"originID": []string{"required:必须指定链来源"},
-	}
-
-	return executeValidation(r, rules, messages)
-}
-
-func (r *requestChainParam) validateChainID() (bool, *string) {
-	rules := govalidator.MapData{
-		"id": []string{"required"},
-	}
-
-	messages := govalidator.MapData{
-		"id": []string{"required:链ID不能为空"},
-	}
-
-	return executeValidation(r, rules, messages)
-}
-
-func (r *requestChainParam) validateChainUpdate() (bool, *string) {
-	rules := govalidator.MapData{
-		"id":   []string{"required"},
-		"name": []string{"required"},
-		"url":  []string{"url"},
-	}
-
-	messages := govalidator.MapData{
-		"id":   []string{"required:链ID不能为空"},
-		"name": []string{"required:名字不能为空"},
-		"url":  []string{"url:Url格式不正确"},
-	}
-	return executeValidation(r, rules, messages)
-}
-
-func (r *requestChainDeployParams) validateChainDeployAdd() (bool, *string) {
-	rules := govalidator.MapData{
-		"name":    []string{"required"},
-		"chainID": []string{"required"},
-	}
-
-	messages := govalidator.MapData{
-		"name":    []string{"required: 节点名不能为空"},
-		"chainID": []string{"required: 链ID不能为空"},
-	}
-
-	return executeValidation(r, rules, messages)
-}
-
-func (r *requestChainDeployParams) validateChainDeployID() (bool, *string) {
-	rules := govalidator.MapData{
-		"id": []string{"required"},
-	}
-
-	messages := govalidator.MapData{
-		"id": []string{"required:实例ID不能为空"},
-	}
-
-	return executeValidation(r, rules, messages)
-}
-
-func (r *requestChainDeployParams) validateChainDeployUpdate() (bool, *string) {
-	rules := govalidator.MapData{
-		"id":      []string{"required"},
-		"name":    []string{"required"},
-		"chainID": []string{"required"},
-	}
-
-	messages := govalidator.MapData{
-		"id":      []string{"required:实例ID不能为空"},
-		"name":    []string{"required: 节点名不能为空"},
-		"chainID": []string{"required: 链ID不能为空"},
-	}
-
-	return executeValidation(r, rules, messages)
-}
-
-// user validate
+// User api params validate.
 // 登录字段参数验证
 func (r *UserRequest) validateLogin() (bool, *string) {
 	rules := govalidator.MapData{
@@ -216,6 +131,146 @@ func (r *CodeRequest) validateGetCode() (bool, *string) {
 		"phone": []string{"digits:电话格式不合法（需要11位数字）"},
 		"email": []string{"email:邮箱格式不合法"},
 		"aim":   []string{"required:验证码类型不能为空"},
+	}
+
+	return executeValidation(r, rules, messages)
+}
+
+// Chain api params validate.
+func (r *requestChainParam) validateChainAdd() (bool, *string) {
+	rules := govalidator.MapData{
+		"name":     []string{"required"},
+		"url":      []string{"url"},
+		"originID": []string{"required"},
+	}
+
+	messages := govalidator.MapData{
+		"name":     []string{"required:名字不能为空"},
+		"url":      []string{"url:Url格式不正确"},
+		"originID": []string{"required:必须指定链来源"},
+	}
+
+	return executeValidation(r, rules, messages)
+}
+
+func (r *requestChainParam) validateChainID() (bool, *string) {
+	rules := govalidator.MapData{
+		"id": []string{"required"},
+	}
+
+	messages := govalidator.MapData{
+		"id": []string{"required:链ID不能为空"},
+	}
+
+	return executeValidation(r, rules, messages)
+}
+
+func (r *requestChainParam) validateChainUpdate() (bool, *string) {
+	rules := govalidator.MapData{
+		"id":   []string{"required"},
+		"name": []string{"required"},
+		"url":  []string{"url"},
+	}
+
+	messages := govalidator.MapData{
+		"id":   []string{"required:链ID不能为空"},
+		"name": []string{"required:名字不能为空"},
+		"url":  []string{"url:Url格式不正确"},
+	}
+	return executeValidation(r, rules, messages)
+}
+
+func (r *requestChainConfig) validateGetConfig() (bool, *string) {
+	rules := govalidator.MapData{
+		"id": []string{"required"},
+	}
+
+	messages := govalidator.MapData{
+		"id": []string{"required:链ID不能为空"},
+	}
+
+	return executeValidation(r, rules, messages)
+}
+
+func (r *requestChainConfig) validateSetConfig() (bool, *string) {
+	rules := govalidator.MapData{
+		"id":     []string{"required"},
+		"config": []string{"required"},
+	}
+
+	messages := govalidator.MapData{
+		"id":     []string{"required:链ID不能为空"},
+		"config": []string{"required:config文件不能为空"},
+	}
+
+	return executeValidation(r, rules, messages)
+}
+
+
+// Chain deploy api params validate.
+func (r *requestChainDeployParams) validateChainDeployAdd() (bool, *string) {
+	rules := govalidator.MapData{
+		"name":    []string{"required"},
+		"chainID": []string{"required"},
+	}
+
+	messages := govalidator.MapData{
+		"name":    []string{"required: 节点名不能为空"},
+		"chainID": []string{"required: 链ID不能为空"},
+	}
+
+	return executeValidation(r, rules, messages)
+}
+
+func (r *requestChainDeployParams) validateChainDeployID() (bool, *string) {
+	rules := govalidator.MapData{
+		"id": []string{"required"},
+	}
+
+	messages := govalidator.MapData{
+		"id": []string{"required:实例ID不能为空"},
+	}
+
+	return executeValidation(r, rules, messages)
+}
+
+func (r *requestChainDeployParams) validateChainDeployUpdate() (bool, *string) {
+	rules := govalidator.MapData{
+		"id":      []string{"required"},
+		"name":    []string{"required"},
+		"chainID": []string{"required"},
+	}
+
+	messages := govalidator.MapData{
+		"id":      []string{"required:实例ID不能为空"},
+		"name":    []string{"required: 节点名不能为空"},
+		"chainID": []string{"required: 链ID不能为空"},
+	}
+
+	return executeValidation(r, rules, messages)
+}
+
+func (r *requestChainDeployConfig) validateGetFile() (bool, *string) {
+	rules := govalidator.MapData{
+		"id": []string{"required"},
+	}
+
+	messages := govalidator.MapData{
+		"id": []string{"required:链实例ID不能为空"},
+	}
+
+	return executeValidation(r, rules, messages)
+}
+
+func (r *requestChainDeployConfig) validateSetConfig() (bool, *string) {
+	rules := govalidator.MapData{
+		"id":     []string{"required"},
+		"config": []string{"required"},
+	}
+
+	messages := govalidator.MapData{
+		"id":     []string{"required:链ID不能为空"},
+		"config": []string{"required:config文件不能为空"},
 	}
 
 	return executeValidation(r, rules, messages)

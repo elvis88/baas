@@ -2,8 +2,6 @@ package service
 
 import (
 	"errors"
-	"github.com/thedevsaddam/govalidator"
-
 	"github.com/elvis88/baas/common/ginutil"
 	"github.com/elvis88/baas/core/generate"
 	"github.com/elvis88/baas/core/model"
@@ -250,31 +248,23 @@ type requestChainDeployConfig struct {
 	Config string `json:"config"`
 }
 
-func (r *requestChainDeployConfig) validateGetConfig() (bool, *string) {
-	rules := govalidator.MapData{
-		"id": []string{"required"},
+func (srv *ChainDeployService) getOriginChainName(chainID uint) (string, error) {
+	// 获取链信息
+	var err error
+	chain := &model.Chain{}
+	if err = srv.DB.First(chain, chainID).Error; nil != err {
+		return "", err
 	}
 
-	messages := govalidator.MapData{
-		"id": []string{"required:链实例ID不能为空"},
+	// 获得来源链信息
+	orgChain := &model.Chain{}
+	if err = srv.DB.First(orgChain, chain.OriginID).Error; nil != err {
+		return "", err
 	}
 
-	return executeValidation(r, rules, messages)
+	return orgChain.Name, nil
 }
 
-func (r *requestChainDeployConfig) validateSetConfig() (bool, *string) {
-	rules := govalidator.MapData{
-		"id":     []string{"required"},
-		"config": []string{"required"},
-	}
-
-	messages := govalidator.MapData{
-		"id":     []string{"required:链ID不能为空"},
-		"config": []string{"required:config文件不能为空"},
-	}
-
-	return executeValidation(r, rules, messages)
-}
 
 // 用户获得config内容
 func (srv *ChainDeployService) ChainDeployGetConfig(c *gin.Context) {
@@ -288,7 +278,7 @@ func (srv *ChainDeployService) ChainDeployGetConfig(c *gin.Context) {
 	}
 
 	// 校验参数
-	if ok, errMsg := chainDeployConfig.validateGetConfig(); !ok {
+	if ok, errMsg := chainDeployConfig.validateGetFile(); !ok {
 		ginutil.Response(c, REQUEST_PARAM_INVALID, errMsg)
 		return
 	}
@@ -300,16 +290,9 @@ func (srv *ChainDeployService) ChainDeployGetConfig(c *gin.Context) {
 		return
 	}
 
-	// 获取链信息
-	chain := &model.Chain{}
-	if err = srv.DB.First(chain, chainDeploy.ChainID).Error; nil != err {
-		ginutil.Response(c, CHAINID_NOT_EXIST, err)
-		return
-	}
-
-	// 获得来源链信息
-	orgChain := &model.Chain{}
-	if err = srv.DB.First(orgChain, chain.OriginID).Error; nil != err {
+	// 获取源链名
+	orgChainName, err := srv.getOriginChainName(chainDeploy.ChainID)
+	if nil != err {
 		ginutil.Response(c, CHAINID_NOT_EXIST, err)
 		return
 	}
@@ -318,7 +301,7 @@ func (srv *ChainDeployService) ChainDeployGetConfig(c *gin.Context) {
 	userService := &UserService{DB: srv.DB}
 	_, user := userService.hasAdminRole(c)
 
-	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, orgChain.Name)
+	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, orgChainName)
 	if spec == nil {
 		ginutil.Response(c, nil, nil)
 		return
@@ -343,7 +326,7 @@ func (srv *ChainDeployService) ChainDeploySetConfig(c *gin.Context) {
 	}
 
 	// 校验参数
-	if ok, errMsg := chainDeployConfig.validateGetConfig(); !ok {
+	if ok, errMsg := chainDeployConfig.validateSetConfig(); !ok {
 		ginutil.Response(c, REQUEST_PARAM_INVALID, errMsg)
 		return
 	}
@@ -355,16 +338,9 @@ func (srv *ChainDeployService) ChainDeploySetConfig(c *gin.Context) {
 		return
 	}
 
-	// 获取链信息
-	chain := &model.Chain{}
-	if err = srv.DB.First(chain, chainDeploy.ChainID).Error; nil != err {
-		ginutil.Response(c, CHAINID_NOT_EXIST, err)
-		return
-	}
-
-	// 获得来源链信息
-	orgChain := &model.Chain{}
-	if err = srv.DB.First(orgChain, chain.OriginID).Error; nil != err {
+	// 获取源链名
+	orgChainName, err := srv.getOriginChainName(chainDeploy.ChainID)
+	if nil != err {
 		ginutil.Response(c, CHAINID_NOT_EXIST, err)
 		return
 	}
@@ -373,7 +349,7 @@ func (srv *ChainDeployService) ChainDeploySetConfig(c *gin.Context) {
 	userService := &UserService{DB: srv.DB}
 	_, user := userService.hasAdminRole(c)
 
-	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, orgChain.Name)
+	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, orgChainName)
 	if spec == nil {
 		ginutil.Response(c, nil, nil)
 		return
@@ -398,7 +374,7 @@ func (srv *ChainDeployService) ChainDeployGet(c *gin.Context) {
 	}
 
 	// 校验参数
-	if ok, errMsg := chainDeployConfig.validateGetConfig(); !ok {
+	if ok, errMsg := chainDeployConfig.validateGetFile(); !ok {
 		ginutil.Response(c, REQUEST_PARAM_INVALID, errMsg)
 		return
 	}
@@ -410,16 +386,9 @@ func (srv *ChainDeployService) ChainDeployGet(c *gin.Context) {
 		return
 	}
 
-	// 获取链信息
-	chain := &model.Chain{}
-	if err = srv.DB.First(chain, chainDeploy.ChainID).Error; nil != err {
-		ginutil.Response(c, CHAINID_NOT_EXIST, err)
-		return
-	}
-
-	// 获得来源链信息
-	orgChain := &model.Chain{}
-	if err = srv.DB.First(orgChain, chain.OriginID).Error; nil != err {
+	// 获取源链名
+	orgChainName, err := srv.getOriginChainName(chainDeploy.ChainID)
+	if nil != err {
 		ginutil.Response(c, CHAINID_NOT_EXIST, err)
 		return
 	}
@@ -428,7 +397,7 @@ func (srv *ChainDeployService) ChainDeployGet(c *gin.Context) {
 	userService := &UserService{DB: srv.DB}
 	_, user := userService.hasAdminRole(c)
 
-	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, orgChain.Name)
+	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, orgChainName)
 	if spec == nil {
 		ginutil.Response(c, nil, nil)
 		return

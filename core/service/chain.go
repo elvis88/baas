@@ -330,32 +330,6 @@ type requestChainConfig struct {
 	Config string `json:"config"`
 }
 
-func (r *requestChainConfig) validateGetConfig() (bool, *string) {
-	rules := govalidator.MapData{
-		"id": []string{"required"},
-	}
-
-	messages := govalidator.MapData{
-		"id": []string{"required:链ID不能为空"},
-	}
-
-	return executeValidation(r, rules, messages)
-}
-
-func (r *requestChainConfig) validateSetConfig() (bool, *string) {
-	rules := govalidator.MapData{
-		"id":     []string{"required"},
-		"config": []string{"required"},
-	}
-
-	messages := govalidator.MapData{
-		"id":     []string{"required:链ID不能为空"},
-		"config": []string{"required:config文件不能为空"},
-	}
-
-	return executeValidation(r, rules, messages)
-}
-
 // 用户获得链config内容
 func (srv *ChainService) ChainGetConfig(c *gin.Context) {
 	var err error
