@@ -206,7 +206,6 @@ func (r *requestChainConfig) validateSetConfig() (bool, *string) {
 	return executeValidation(r, rules, messages)
 }
 
-
 // Chain deploy api params validate.
 func (r *requestChainDeployParams) validateChainDeployAdd() (bool, *string) {
 	rules := govalidator.MapData{
