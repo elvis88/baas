@@ -1,6 +1,7 @@
 package generate
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -71,5 +72,6 @@ func (app *ApplicationDeploySpec) GetConfigFile() string {
 
 // GetDeployFile 获取配置文件
 func (app *ApplicationDeploySpec) GetDeployFile() string {
-	return filepath.Join(app.datadir(), DeploymentFile)
+	return fmt.Sprintf("/file/%s/%s/%s", app.Name, Deployment, DeploymentFile)
+	//return filepath.Join(app.datadir(), DeploymentFile)
 }
