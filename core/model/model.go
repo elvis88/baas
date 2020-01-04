@@ -18,12 +18,12 @@ type User struct {
 	Name      string `json:"name" gorm:"type:varchar(100);not null;unique"`
 	Password  string `json:"pwd" gorm:"not null"`
 	Nick      string `json:"nick" gorm:"not null"`
-	Email     string `json:"email;unique"`
+	Email     string `json:"email" gorm:"unique"`
 	Telephone string `json:"tel" gorm:"column:tel;unique"`
 
 	Roles          []*Role          `json:"role,omitempty" gorm:"many2many:user_role;"`
 	Chains         []*Chain         `json:"chain,omitempty"`
-    OwnerChains    []*Chain			`json:"ownerchain,omitempty" gorm:"many2many:user_chain;"`
+	OwnerChains    []*Chain         `json:"ownerchain,omitempty" gorm:"many2many:user_chain;"`
 	ChainDeploys   []*ChainDeploy   `json:"chaindeploy,omitempty"`
 	Browsers       []*Browser       `json:"browser,omitempty"`
 	BrowserDeploys []*BrowserDeploy `json:"browserdeploy,omitempty"`
@@ -48,7 +48,7 @@ type Chain struct {
 	Public      bool
 	OriginID    uint
 
-	UserID      uint   `gorm:"column:owner_id"`
+	UserID uint `gorm:"column:owner_id"`
 }
 
 // ChainDeploy 区块链部署表
@@ -58,8 +58,8 @@ type ChainDeploy struct {
 	Name        string `gorm:"type:varchar(100);not null;unique"`
 	Description string `gorm:"column:desc"`
 
-	UserID  uint	   `gorm:"column:user_id"`
-	ChainID uint       `gorm:"column:chain_id"`
+	UserID  uint `gorm:"column:user_id"`
+	ChainID uint `gorm:"column:chain_id"`
 }
 
 // Browser 浏览器表
