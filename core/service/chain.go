@@ -1,12 +1,12 @@
 package service
 
 import (
+	"fmt"
 	"github.com/elvis88/baas/common/ginutil"
 	"github.com/elvis88/baas/core/generate"
 	"github.com/elvis88/baas/core/model"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
-	"github.com/thedevsaddam/govalidator"
 )
 
 // ChainService 区块链配置表
@@ -141,6 +141,40 @@ func (srv *ChainService) ChainJoin(c *gin.Context) {
 	}
 
 	ginutil.Response(c, nil, chain)
+}
+
+// 获取来源链列表
+func (srv *ChainService) OriginChainList(c *gin.Context) {
+	req := &PagerRequest{
+		Page:     0,
+		PageSize: 10,
+	}
+	var err error
+
+	// 获取主体信息
+	if err = c.ShouldBindJSON(req); nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, err)
+		return
+	}
+	offset := req.Page * req.PageSize
+
+	// 获取ownerID
+	user := &model.User{}
+	if err = srv.DB.Where("name = ?", "admin").First(user).Error; nil != err {
+		fmt.Println("here")
+		ginutil.Response(c, GET_CHAINS_FAIL, err)
+		return
+	}
+
+	// Get Origin chain list
+	var chains []*model.Chain
+	if err = srv.DB.Offset(offset).Limit(req.PageSize).Where(&model.Chain{UserID: user.ID}).Find(&chains).Error; nil != err {
+		fmt.Println("here")
+		ginutil.Response(c, GET_CHAINS_FAIL, err)
+		return
+	}
+
+	ginutil.Response(c, nil, chains)
 }
 
 // 获取链列表（admin可以查看任何人的链）
@@ -431,6 +465,7 @@ func (srv *ChainService) Register(router *gin.Engine, api *gin.RouterGroup) {
 	chain := api.Group("/chain")
 	chain.POST("/add", srv.ChainAdd)
 	chain.POST("/join", srv.ChainJoin)
+	chain.POST("/originlist", srv.OriginChainList)
 	chain.POST("/list", srv.ChainList)
 	chain.POST("/delete", srv.ChainDelete)
 	chain.POST("/exit", srv.ChainExit)

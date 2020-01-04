@@ -3,3 +3,4 @@ baas
 baas.db
 shared/data
 !shared/data/admin
+.idea/*
