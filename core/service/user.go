@@ -658,8 +658,6 @@ func (srv *UserService) UserLoginCode(ctx *gin.Context) {
 	return
 }
 
-
-
 // UserChangeCode 获取验证码
 func (srv *UserService) UserChangeCode(ctx *gin.Context) {
 	req := &CodeRequest{}
@@ -732,11 +730,10 @@ func (srv *UserService) sendCode(req *CodeRequest) (map[string]interface{}, erro
 func (srv *UserService) hasAdminRole(ctx *gin.Context) (bool, *model.User) {
 	token := ctx.GetHeader(headerTokenKey)
 	session := ginutil.GetSession(ctx, token)
-	usr := &model.User{
-		Model: model.Model{
-			ID: session.(uint),
-		},
-	}
+
+	// 获取账户信息
+	usr := &model.User{}
+	srv.DB.First(usr, session.(uint))
 	roles := []*model.Role{}
 	srv.DB.Model(usr).Related(&roles, "Roles")
 	for _, role := range roles {
@@ -781,8 +778,7 @@ func (srv *UserService) UserGetFile(ctx *gin.Context) {
 		return
 	}
 
-	usrName := cusr.Name
-	ctx.Request.URL.Path = strings.Replace(ctx.Request.URL.Path, fmt.Sprintf("file/%s/%s", nodename, action), fmt.Sprintf("data/%s/%s/%s", usrName, nodename, action), 1)
+	ctx.Request.URL.Path = strings.Replace(ctx.Request.URL.Path, fmt.Sprintf("file/%s/%s", nodename, action), fmt.Sprintf("data/%s/%s", nodename, action), 1)
 }
 
 // Register ...

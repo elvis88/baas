@@ -20,7 +20,7 @@ type ApplicationDeploySpec struct {
 
 // 数据目录路径
 func (app *ApplicationDeploySpec) datadir() string {
-	dirPath := filepath.Join(app.Account, app.Name, Deployment)
+	dirPath := filepath.Join(app.Name, Deployment)
 	root := filepath.Join(os.Getenv("GOPATH"), viper.GetString("baas.shared"))
 	if root == "" {
 		root = filepath.Join(os.Getenv("GOPATH"), "src/github.com/elvis88/baas/shared")
@@ -39,12 +39,29 @@ func (app *ApplicationDeploySpec) templatedir() string {
 
 // Build 创建数据目录
 func (app *ApplicationDeploySpec) Build(copyTo func(tfilename, filename string) error) error {
-	err := util.CreatedDir(app.datadir())
+	shellFilePath := app.datadir()
+	err := util.CreatedDir(shellFilePath)
 	if err != nil {
 		return err
 	}
 	// 模本目录 ===> 数据目录
-	return util.CopyDir(app.templatedir(), app.datadir(), copyTo)
+	if err = util.CopyDir(app.templatedir(), shellFilePath, copyTo); nil != err {
+		return err
+	}
+
+	// 修改参数
+	var oldText []byte
+	shellFileName := fmt.Sprintf("%s/%s", shellFilePath, DeploymentFile)
+	if oldText, err = ioutil.ReadFile(shellFileName); nil != err {
+		return err
+	}
+
+	modifiedText := fmt.Sprintf(string(oldText), app.Account, app.Name)
+	if err = ioutil.WriteFile(shellFileName, []byte(modifiedText), 0644); nil != err {
+		return err
+	}
+
+	return nil
 }
 
 // Remove 删除数据目录

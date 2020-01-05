@@ -14,7 +14,6 @@ type ChainDeployService struct {
 	DB *gorm.DB
 }
 
-
 // chainDeployValidate
 type requestChainDeployParams struct {
 	ID          uint   `json:"id"`
@@ -23,7 +22,6 @@ type requestChainDeployParams struct {
 	ChainID     uint   `json:"chainID"`
 	Description string `json:"desc"`
 }
-
 
 func (srv *ChainDeployService) userHaveChain(userID, chainID uint) (b bool, err error) {
 	var chain model.Chain
@@ -67,9 +65,9 @@ func (srv *ChainDeployService) ChainDeployAdd(ctx *gin.Context) {
 
 	// 添加链实例
 	chainDeploy := &model.ChainDeploy{
-		Name: chainDeployParams.Name,
-		UserID: user.ID,
-		ChainID: chainDeployParams.ChainID,
+		Name:        chainDeployParams.Name,
+		UserID:      user.ID,
+		ChainID:     chainDeployParams.ChainID,
 		Description: chainDeployParams.Description,
 	}
 
@@ -83,7 +81,6 @@ func (srv *ChainDeployService) ChainDeployAdd(ctx *gin.Context) {
 		ginutil.Response(ctx, CHAINID_NOT_EXIST, err)
 		return
 	}
-
 	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, originChain.Name)
 	if spec == nil {
 		ginutil.Response(ctx, ADD_CHAIN_FAIL, errors.New("not support"))
@@ -225,7 +222,7 @@ func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
 
 	// 存储更新的结果
 	updateDB := srv.DB.Model(chainDeployVerify).Updates(&model.Chain{
-		Name: chainDeployParams.Name,
+		Name:        chainDeployParams.Name,
 		Description: chainDeployParams.Description,
 	})
 	if err = updateDB.Error; nil != err {
@@ -264,7 +261,6 @@ func (srv *ChainDeployService) getOriginChainName(chainID uint) (string, error) 
 
 	return orgChain.Name, nil
 }
-
 
 // 用户获得config内容
 func (srv *ChainDeployService) ChainDeployGetConfig(c *gin.Context) {
