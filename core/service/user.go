@@ -731,9 +731,11 @@ func (srv *UserService) hasAdminRole(ctx *gin.Context) (bool, *model.User) {
 	token := ctx.GetHeader(headerTokenKey)
 	session := ginutil.GetSession(ctx, token)
 
-	// 获取账户信息
 	usr := &model.User{}
-	srv.DB.First(usr, session.(uint))
+	if err := srv.DB.First(usr, session.(uint)).Error; nil != err {
+		return false, nil
+	}
+
 	roles := []*model.Role{}
 	srv.DB.Model(usr).Related(&roles, "Roles")
 	for _, role := range roles {
@@ -778,7 +780,8 @@ func (srv *UserService) UserGetFile(ctx *gin.Context) {
 		return
 	}
 
-	ctx.Request.URL.Path = strings.Replace(ctx.Request.URL.Path, fmt.Sprintf("file/%s/%s", nodename, action), fmt.Sprintf("data/%s/%s", nodename, action), 1)
+	usrName := cusr.Name
+	ctx.Request.URL.Path = strings.Replace(ctx.Request.URL.Path, fmt.Sprintf("file/%s/%s", action, nodename), fmt.Sprintf("data/%s/%s/%s", usrName, action, nodename), 1)
 }
 
 // Register ...
@@ -801,7 +804,7 @@ func (srv *UserService) Register(router *gin.Engine, api *gin.RouterGroup) {
 
 	// 脚本下载
 	api.Static("/data", "./shared/data")
-	api.GET("/file/:nodename/:action/:fname", func(ctx *gin.Context) {
+	api.GET("/file/:action/:nodename/:fname", func(ctx *gin.Context) {
 		srv.UserGetFile(ctx)
 		router.HandleContext(ctx)
 	})

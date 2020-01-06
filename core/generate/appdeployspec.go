@@ -20,7 +20,7 @@ type ApplicationDeploySpec struct {
 
 // 数据目录路径
 func (app *ApplicationDeploySpec) datadir() string {
-	dirPath := filepath.Join(app.Name, Deployment)
+	dirPath := filepath.Join(app.Account, Deployment, app.Name)
 	root := filepath.Join(os.Getenv("GOPATH"), viper.GetString("baas.shared"))
 	if root == "" {
 		root = filepath.Join(os.Getenv("GOPATH"), "src/github.com/elvis88/baas/shared")
@@ -39,29 +39,12 @@ func (app *ApplicationDeploySpec) templatedir() string {
 
 // Build 创建数据目录
 func (app *ApplicationDeploySpec) Build(copyTo func(tfilename, filename string) error) error {
-	shellFilePath := app.datadir()
-	err := util.CreatedDir(shellFilePath)
+	err := util.CreatedDir(app.datadir())
 	if err != nil {
 		return err
 	}
 	// 模本目录 ===> 数据目录
-	if err = util.CopyDir(app.templatedir(), shellFilePath, copyTo); nil != err {
-		return err
-	}
-
-	// 修改参数
-	var oldText []byte
-	shellFileName := fmt.Sprintf("%s/%s", shellFilePath, DeploymentFile)
-	if oldText, err = ioutil.ReadFile(shellFileName); nil != err {
-		return err
-	}
-
-	modifiedText := fmt.Sprintf(string(oldText), app.Account, app.Name)
-	if err = ioutil.WriteFile(shellFileName, []byte(modifiedText), 0644); nil != err {
-		return err
-	}
-
-	return nil
+	return util.CopyDir(app.templatedir(), app.datadir(), copyTo)
 }
 
 // Remove 删除数据目录
@@ -89,6 +72,6 @@ func (app *ApplicationDeploySpec) GetConfigFile() string {
 
 // GetDeployFile 获取配置文件
 func (app *ApplicationDeploySpec) GetDeployFile() string {
-	return fmt.Sprintf("/file/%s/%s/%s", app.Name, Deployment, DeploymentFile)
+	return fmt.Sprintf("/file/%s/%s/%s", Deployment, app.Name, DeploymentFile)
 	//return filepath.Join(app.datadir(), DeploymentFile)
 }

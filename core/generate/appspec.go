@@ -20,7 +20,7 @@ type ApplicationSpec struct {
 
 // 数据目录路径
 func (app *ApplicationSpec) datadir() string {
-	dirPath := filepath.Join(app.Name, Application)
+	dirPath := filepath.Join(app.Account, Application, app.Name)
 	root := filepath.Join(os.Getenv("GOPATH"), viper.GetString("baas.shared"))
 	if root == "" {
 		root = filepath.Join(os.Getenv("GOPATH"), "src/github.com/elvis88/baas/shared")

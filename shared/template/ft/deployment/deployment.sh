@@ -17,8 +17,8 @@ RELEASE_CONFIG="genesis.json"
 DEPLOY_CONFIG="config.yaml"
 
 # template variable
-DEPLOY_USER="%s" # node user
-DEPLOY_NAME="%s"  # node name
+DEPLOY_USER="testuser" # node user
+DEPLOY_NAME="ft"  # node name
 
 # derived variable
 BINARY_RELEASE_CONFIG="${RELEASE_CONFIG}"
