@@ -19,11 +19,12 @@ DEPLOY_CONFIG="config.yaml"
 # template variable
 DEPLOY_USER="testuser" # node user
 DEPLOY_NAME="ft"  # node name
+APP_NAME="ft"
 
 # derived variable
 BINARY_RELEASE_CONFIG="${RELEASE_CONFIG}"
 BINARY_DEPLOY_CONFIG="${DEPLOY_CONFIG}"
-RELEASE_CONFIG_ROOT="${BASS_ROOT}/file/${DEPLOY_NAME}/application"
+RELEASE_CONFIG_ROOT="${BASS_ROOT}/file/${APP_NAME}/application"
 DEPLOY_CONFIG_ROOT="${BASS_ROOT}/file/${DEPLOY_NAME}/deployment"
 DEPLOY_DIR="${HOME}/.baas/${BINARY_NAME}/${DEPLOY_NAME}"
 BINARY_ARG="-g ${DEPLOY_DIR}/${BINARY_RELEASE_CONFIG} -c ${DEPLOY_DIR}/${BINARY_DEPLOY_CONFIG}"
@@ -79,17 +80,17 @@ downloader() {
     elif [ "$_dld" = curl ]; then
         if ! [[ $1 =~ https ]] || ! check_help_for curl --proto --tlsv1.2; then
             echo "Warning: Not forcing TLS v1.2, this is potentially less secure"
-            curl --silent --show-error --fail --location "$1" --output "$2"
+            curl --silent --show-error --fail --location "$1" --output "$2" $3
         else
             echo "curl --proto '=https' --tlsv1.2 --silent --show-error --fail --location $1 --output $2"
-            curl --proto '=https' --tlsv1.2 --silent --show-error --fail --location "$1" --output "$2"
+            curl --proto '=https' --tlsv1.2 --silent --show-error --fail --location "$1" --output "$2" $3
         fi
     elif [ "$_dld" = wget ]; then
         if [[ $1 =~ https ]] || ! check_help_for wget --https-only --secure-protocol; then
             echo "Warning: Not forcing TLS v1.2, this is potentially less secure"
-            wget "$1" -O "$2"
+            wget "$1" -O "$2" $3
         else
-            wget --https-only --secure-protocol=TLSv1_2 "$1" -O "$2"
+            wget --https-only --secure-protocol=TLSv1_2 "$1" -O "$2" $3
         fi
     else
         err "Unknown downloader"   # should not reach here
@@ -155,11 +156,11 @@ start() {
     # TODO
     _file="${BINARY_RELEASE_CONFIG}"
     _url="${RELEASE_CONFIG_ROOT}/${_file}"
-    ensure downloader $_url ${DEPLOY_DIR}/$_file
+    ensure downloader $_url ${DEPLOY_DIR}/$_file "--header \"Authorization:${BASS_Authorization}\""
 
     _file="${BINARY_DEPLOY_CONFIG}"
     _url="${DEPLOY_CONFIG_ROOT}/${_file}"
-    ensure downloader $_url ${DEPLOY_DIR}/$_file
+    ensure downloader $_url ${DEPLOY_DIR}/$_file "--header \"Authorization:${BASS_Authorization}\""
 
     local _timestamp="$(date "+%Y%m%d%H%M%S")"
     ensure  ${DEPLOY_CMD} > ${DEPLOY_DIR}/${_timestamp}_${DEPLOY_NAME}.log 2>&1 &
