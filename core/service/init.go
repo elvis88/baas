@@ -55,8 +55,9 @@ var (
 	ADD_CHAIN_FAIL           = errors.New("添加链失败")
 	GET_CHAINS_FAIL          = errors.New("获取链列表失败")
 	CHAINID_NOT_EXIST        = errors.New("链不存在")
-	CHAINID_DEPLOY_NOT_EXIST = errors.New("节点不存在")
-	CHAINID_DEPLOY_ADD_FAIL  = errors.New("链实例添加失败")
+	NOT_SUPPORT_ORIGIN_CHAIN = errors.New("不支持该源链")
+	CHAIN_DEPLOY_NOT_EXIST   = errors.New("节点不存在")
+	CHAIN_DEPLOY_ADD_FAIL    = errors.New("链实例添加失败")
 	PARAMS_IS_NOT_ENOUGH     = errors.New("参数不足")
 )
 

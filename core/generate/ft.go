@@ -48,10 +48,11 @@ type FTDeploySpec struct {
 }
 
 // NewFTDeploySpec ft block chain deployment
-func NewFTDeploySpec(account string, name string, org string) *FTDeploySpec {
+func NewFTDeploySpec(account string, name string, org string, chain string) *FTDeploySpec {
 	return &FTDeploySpec{
 		ApplicationDeploySpec{
 			Org:             org,
+			Chain:           chain,
 			Name:            name,
 			Account:         account,
 			CoinfigFileName: FTDeployConfigFileName,
@@ -78,7 +79,7 @@ func (app *FTDeploySpec) Build() error {
 		if bname == DeploymentFile {
 			bts = bytes.Replace(bts, []byte(`DEPLOY_USER="admin"`), []byte(fmt.Sprintf(`DEPLOY_USER="%s"`, app.Account)), 1)
 			bts = bytes.Replace(bts, []byte(`DEPLOY_NAME="ft"`), []byte(fmt.Sprintf(`DEPLOY_NAME="%s"`, app.Name)), 1)
-			bts = bytes.Replace(bts, []byte(`APP_NAME="ft"`), []byte(fmt.Sprintf(`APP_NAME="%s"`, app.Org)), 1)
+			bts = bytes.Replace(bts, []byte(`APP_NAME="ft"`), []byte(fmt.Sprintf(`APP_NAME="%s"`, app.Chain)), 1)
 			permission = 0755
 		}
 

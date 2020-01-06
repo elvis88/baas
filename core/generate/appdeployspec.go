@@ -13,6 +13,7 @@ import (
 // ApplicationDeploySpec 定义
 type ApplicationDeploySpec struct {
 	Org             string
+	Chain           string
 	Name            string
 	CoinfigFileName string
 	Account         string

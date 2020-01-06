@@ -14,7 +14,6 @@ type ChainDeployService struct {
 	DB *gorm.DB
 }
 
-
 // chainDeployValidate
 type requestChainDeployParams struct {
 	ID          uint   `json:"id"`
@@ -23,7 +22,6 @@ type requestChainDeployParams struct {
 	ChainID     uint   `json:"chainID"`
 	Description string `json:"desc"`
 }
-
 
 func (srv *ChainDeployService) userHaveChain(userID, chainID uint) (b bool, err error) {
 	var chain model.Chain
@@ -61,30 +59,30 @@ func (srv *ChainDeployService) ChainDeployAdd(ctx *gin.Context) {
 	// 验证用户是否拥有链
 	ok, err := srv.userHaveChain(user.ID, chainDeployParams.ChainID)
 	if nil != err || !ok {
-		ginutil.Response(ctx, CHAINID_DEPLOY_ADD_FAIL, err)
+		ginutil.Response(ctx, CHAIN_DEPLOY_ADD_FAIL, err)
 		return
 	}
 
 	// 添加链实例
 	chainDeploy := &model.ChainDeploy{
-		Name: chainDeployParams.Name,
-		UserID: user.ID,
-		ChainID: chainDeployParams.ChainID,
+		Name:        chainDeployParams.Name,
+		UserID:      user.ID,
+		ChainID:     chainDeployParams.ChainID,
 		Description: chainDeployParams.Description,
 	}
 
 	chain := &model.Chain{}
 	if err := srv.DB.First(chain, chainDeploy.ChainID).Error; err != nil {
-		ginutil.Response(ctx, CHAINID_NOT_EXIST, err)
+		ginutil.Response(ctx, CHAIN_DEPLOY_NOT_EXIST, err)
 		return
 	}
 	originChain := &model.Chain{}
 	if err := srv.DB.First(originChain, chain.OriginID).Error; err != nil {
-		ginutil.Response(ctx, CHAINID_NOT_EXIST, err)
+		ginutil.Response(ctx, CHAIN_DEPLOY_NOT_EXIST, err)
 		return
 	}
 
-	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, originChain.Name)
+	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, originChain.Name, chain.Name)
 	if spec == nil {
 		ginutil.Response(ctx, ADD_CHAIN_FAIL, errors.New("not support"))
 		return
@@ -167,7 +165,7 @@ func (srv *ChainDeployService) ChainDeployDelete(ctx *gin.Context) {
 	// 指定id获取实例数据
 	chainDeploy := &model.ChainDeploy{}
 	if err = srv.DB.First(chainDeploy, chainDeployParams.ID).Error; nil != err {
-		ginutil.Response(ctx, CHAINID_DEPLOY_NOT_EXIST, nil)
+		ginutil.Response(ctx, CHAIN_DEPLOY_NOT_EXIST, nil)
 		return
 	}
 
@@ -209,7 +207,7 @@ func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
 	// 获取该ID对应的数据
 	chainDeployVerify := &model.ChainDeploy{}
 	if err = srv.DB.First(chainDeployVerify, chainDeployParams.ID).Error; nil != err {
-		ginutil.Response(ctx, CHAINID_DEPLOY_NOT_EXIST, nil)
+		ginutil.Response(ctx, CHAIN_DEPLOY_NOT_EXIST, nil)
 		return
 	}
 
@@ -225,7 +223,7 @@ func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
 
 	// 存储更新的结果
 	updateDB := srv.DB.Model(chainDeployVerify).Updates(&model.Chain{
-		Name: chainDeployParams.Name,
+		Name:        chainDeployParams.Name,
 		Description: chainDeployParams.Description,
 	})
 	if err = updateDB.Error; nil != err {
@@ -235,7 +233,7 @@ func (srv *ChainDeployService) ChainDeployUpdate(ctx *gin.Context) {
 
 	// 获取最新链实例数据
 	if err = srv.DB.First(chainDeployVerify, chainDeployParams.ID).Error; nil != err {
-		ginutil.Response(ctx, CHAINID_DEPLOY_NOT_EXIST, nil)
+		ginutil.Response(ctx, CHAIN_DEPLOY_NOT_EXIST, nil)
 		return
 	}
 
@@ -265,7 +263,6 @@ func (srv *ChainDeployService) getOriginChainName(chainID uint) (string, error) 
 	return orgChain.Name, nil
 }
 
-
 // 用户获得config内容
 func (srv *ChainDeployService) ChainDeployGetConfig(c *gin.Context) {
 	var err error
@@ -286,14 +283,14 @@ func (srv *ChainDeployService) ChainDeployGetConfig(c *gin.Context) {
 	// 查询链实例信息
 	chainDeploy := &model.ChainDeploy{}
 	if err = srv.DB.First(chainDeploy, chainDeployConfig.ID).Error; nil != err {
-		ginutil.Response(c, CHAINID_NOT_EXIST, err)
+		ginutil.Response(c, CHAIN_DEPLOY_NOT_EXIST, err)
 		return
 	}
 
 	// 获取源链名
 	orgChainName, err := srv.getOriginChainName(chainDeploy.ChainID)
 	if nil != err {
-		ginutil.Response(c, CHAINID_NOT_EXIST, err)
+		ginutil.Response(c, CHAIN_DEPLOY_NOT_EXIST, err)
 		return
 	}
 
@@ -301,7 +298,7 @@ func (srv *ChainDeployService) ChainDeployGetConfig(c *gin.Context) {
 	userService := &UserService{DB: srv.DB}
 	_, user := userService.hasAdminRole(c)
 
-	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, orgChainName)
+	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, orgChainName, "")
 	if spec == nil {
 		ginutil.Response(c, nil, nil)
 		return
@@ -334,14 +331,14 @@ func (srv *ChainDeployService) ChainDeploySetConfig(c *gin.Context) {
 	// 查询链实例信息
 	chainDeploy := &model.ChainDeploy{}
 	if err = srv.DB.First(chainDeploy, chainDeployConfig.ID).Error; nil != err {
-		ginutil.Response(c, CHAINID_NOT_EXIST, err)
+		ginutil.Response(c, CHAIN_DEPLOY_NOT_EXIST, err)
 		return
 	}
 
 	// 获取源链名
 	orgChainName, err := srv.getOriginChainName(chainDeploy.ChainID)
 	if nil != err {
-		ginutil.Response(c, CHAINID_NOT_EXIST, err)
+		ginutil.Response(c, CHAIN_DEPLOY_NOT_EXIST, err)
 		return
 	}
 
@@ -349,7 +346,7 @@ func (srv *ChainDeployService) ChainDeploySetConfig(c *gin.Context) {
 	userService := &UserService{DB: srv.DB}
 	_, user := userService.hasAdminRole(c)
 
-	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, orgChainName)
+	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, orgChainName, "")
 	if spec == nil {
 		ginutil.Response(c, nil, nil)
 		return
@@ -382,14 +379,14 @@ func (srv *ChainDeployService) ChainDeployGet(c *gin.Context) {
 	// 查询链实例信息
 	chainDeploy := &model.ChainDeploy{}
 	if err = srv.DB.First(chainDeploy, chainDeployConfig.ID).Error; nil != err {
-		ginutil.Response(c, CHAINID_NOT_EXIST, err)
+		ginutil.Response(c, CHAIN_DEPLOY_NOT_EXIST, err)
 		return
 	}
 
 	// 获取源链名
 	orgChainName, err := srv.getOriginChainName(chainDeploy.ChainID)
 	if nil != err {
-		ginutil.Response(c, CHAINID_NOT_EXIST, err)
+		ginutil.Response(c, CHAIN_DEPLOY_NOT_EXIST, err)
 		return
 	}
 
@@ -397,7 +394,7 @@ func (srv *ChainDeployService) ChainDeployGet(c *gin.Context) {
 	userService := &UserService{DB: srv.DB}
 	_, user := userService.hasAdminRole(c)
 
-	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, orgChainName)
+	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, orgChainName, "")
 	if spec == nil {
 		ginutil.Response(c, nil, nil)
 		return

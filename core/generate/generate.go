@@ -32,10 +32,10 @@ type AppDeploySpec interface {
 }
 
 // NewAppDeploySpec an application spec object
-func NewAppDeploySpec(user, name, org string) AppDeploySpec {
+func NewAppDeploySpec(user, name, org, chain string) AppDeploySpec {
 	lorg := strings.ToLower(org)
 	if lorg == "ft" {
-		return NewFTDeploySpec(user, name, org)
+		return NewFTDeploySpec(user, name, org, chain)
 	}
 	return nil
 }

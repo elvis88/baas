@@ -58,6 +58,18 @@ func (srv *ChainService) ChainAdd(c *gin.Context) {
 		return
 	}
 
+	// 源链必须是admin创建的
+	admin := &model.User{}
+	if err := srv.DB.First(admin, orginChain.UserID).Error; err != nil {
+		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, err)
+		return
+	}
+
+	if admin.Name != "admin" {
+		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, nil)
+		return
+	}
+
 	spec := generate.NewAppSpec(user.Name, chain.Name, orginChain.Name)
 	if spec == nil {
 		ginutil.Response(c, ADD_CHAIN_FAIL, "not support "+orginChain.Name)
