@@ -22,7 +22,7 @@ type ApplicationSpec struct {
 func (app *ApplicationSpec) datadir() string {
 	dirPath := filepath.Join(app.Account, Application, app.Name)
 	root := filepath.Join(os.Getenv("GOPATH"), viper.GetString("baas.shared"))
-	if root == "" {
+	if root == os.Getenv("GOPATH") {
 		root = filepath.Join(os.Getenv("GOPATH"), "src/github.com/elvis88/baas/shared")
 	}
 	return filepath.Join(root, "data", dirPath)
@@ -31,7 +31,7 @@ func (app *ApplicationSpec) datadir() string {
 // 模本目录路径
 func (app *ApplicationSpec) templatedir() string {
 	root := filepath.Join(os.Getenv("GOPATH"), viper.GetString("baas.shared"))
-	if root == "" {
+	if root == os.Getenv("GOPATH") {
 		root = filepath.Join(os.Getenv("GOPATH"), "src/github.com/elvis88/baas/shared")
 	}
 	return filepath.Join(root, "template", app.Org, Application)

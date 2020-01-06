@@ -17,7 +17,7 @@ RELEASE_CONFIG="genesis.json"
 DEPLOY_CONFIG="config.yaml"
 
 # template variable
-DEPLOY_USER="testuser" # node user
+DEPLOY_USER="admin" # node user
 DEPLOY_NAME="ft"  # node name
 APP_NAME="ft"
 

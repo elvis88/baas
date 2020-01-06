@@ -1,6 +1,8 @@
 package generate
 
 import (
+	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 )
@@ -70,6 +72,14 @@ func (app *FTDeploySpec) Build() error {
 		if err != nil {
 			return err
 		}
+
+		bname := fi.Name()
+		if bname == "deployment.sh" {
+			bts = bytes.Replace(bts, []byte(`DEPLOY_USER="admin"`), []byte(fmt.Sprintf(`DEPLOY_USER="%s"`, app.Account)), 1)
+			bts = bytes.Replace(bts, []byte(`DEPLOY_NAME="ft"`), []byte(fmt.Sprintf(`DEPLOY_NAME="%s"`, app.Name)), 1)
+			bts = bytes.Replace(bts, []byte(`APP_NAME="ft"`), []byte(fmt.Sprintf(`APP_NAME="%s"`, app.Org)), 1)
+		}
+
 		return ioutil.WriteFile(tname, bts, os.ModePerm)
 	}
 	return app.ApplicationDeploySpec.Build(copyto)
