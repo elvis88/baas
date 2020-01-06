@@ -37,7 +37,7 @@ func (app *FTSpec) Build() error {
 		if err != nil {
 			return err
 		}
-		return ioutil.WriteFile(tname, bts, os.ModePerm)
+		return ioutil.WriteFile(tname, bts, os.FileMode(0644))
 	}
 	return app.ApplicationSpec.Build(copyto)
 }
@@ -73,14 +73,16 @@ func (app *FTDeploySpec) Build() error {
 			return err
 		}
 
+		permission := os.FileMode(0644)
 		bname := fi.Name()
-		if bname == "deployment.sh" {
+		if bname == DeploymentFile {
 			bts = bytes.Replace(bts, []byte(`DEPLOY_USER="admin"`), []byte(fmt.Sprintf(`DEPLOY_USER="%s"`, app.Account)), 1)
 			bts = bytes.Replace(bts, []byte(`DEPLOY_NAME="ft"`), []byte(fmt.Sprintf(`DEPLOY_NAME="%s"`, app.Name)), 1)
 			bts = bytes.Replace(bts, []byte(`APP_NAME="ft"`), []byte(fmt.Sprintf(`APP_NAME="%s"`, app.Org)), 1)
+			permission = 0755
 		}
 
-		return ioutil.WriteFile(tname, bts, os.ModePerm)
+		return ioutil.WriteFile(tname, bts, permission)
 	}
 	return app.ApplicationDeploySpec.Build(copyto)
 }
