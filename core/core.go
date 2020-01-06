@@ -15,6 +15,7 @@ type service interface {
 
 // Server 提供服务
 func Server(router *gin.Engine, db *gorm.DB) error {
+	// 创建数据库表
 	if err := db.AutoMigrate(
 		&model.User{}, model.Role{},
 		model.Chain{}, model.ChainDeploy{},

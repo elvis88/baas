@@ -11,7 +11,6 @@ import (
 	"github.com/elvis88/baas/common/sms"
 
 	"github.com/elvis88/baas/common/ginutil"
-	"github.com/elvis88/baas/common/jwt"
 	"github.com/elvis88/baas/common/password"
 	"github.com/elvis88/baas/core/generate"
 	"github.com/elvis88/baas/core/model"
@@ -133,42 +132,30 @@ func (srv *UserService) UserLogin(ctx *gin.Context) {
 		return
 	}
 
-	now := time.Now()
-	info := make(map[string]interface{})
-	info["userId"] = usr.ID
-	info["exp"] = now.Add(time.Hour * 1).Unix() // 1 小时过期
-	info["iat"] = now.Unix()
-	token, err := jwt.CreateToken(TokenKey, info)
+	token := newAuthorizeToken(usr.ID)
+	jwttoken, err := token.toJWT()
 	if err != nil {
-
 		ginutil.Response(ctx, LOGIN_FAIL, err.Error())
 		return
 	}
 
-	ctx.Header(headerTokenKey, token)
-	ginutil.SetSession(ctx, token, usr.ID)
+	ctx.Header(headerTokenKey, jwttoken)
 	ginutil.Response(ctx, nil, usr)
 	return
 }
 
 // UserAuthorize 用户验证
 func (srv *UserService) UserAuthorize(ctx *gin.Context) {
-	token := ctx.GetHeader(headerTokenKey)
-	session := ginutil.GetSession(ctx, token)
-	if nil == session {
-		ginutil.Response(ctx, TOKEN_NOT_EXIST, nil)
-		ctx.Abort()
-		return
-	}
+	jwttoken := ctx.GetHeader(headerTokenKey)
 
-	info, ok := jwt.ParseToken(token, TokenKey)
-	if !ok {
+	token := newFromJWT(jwttoken)
+	if token == nil {
 		ginutil.Response(ctx, TOKEN_INVALID, nil)
 		ctx.Abort()
 		return
 	}
 
-	if infoMap := info.(map[string]interface{}); float64(time.Now().Unix()) >= infoMap["exp"].(float64) {
+	if time.Now().Unix() >= token.Exp {
 		ginutil.Response(ctx, TOKEN_EXPIRE, nil)
 		ctx.Abort()
 		return
@@ -177,22 +164,20 @@ func (srv *UserService) UserAuthorize(ctx *gin.Context) {
 	usr := &model.User{}
 	if err := srv.DB.Where(&model.User{
 		Model: model.Model{
-			ID: session.(uint),
+			ID: token.UserID,
 		},
 	}).First(usr).Error; err != nil {
-
 		ginutil.Response(ctx, ID_NOT_EXIST, err.Error())
 		ctx.Abort()
 		return
 	}
-
+	ginutil.SetSession(ctx, jwttoken, usr.ID)
 	ctx.Next()
 }
 
 // UserLogout 退出登陆
 func (srv *UserService) UserLogout(ctx *gin.Context) {
-	token := ctx.GetHeader(headerTokenKey)
-	ginutil.RemoveSession(ctx, token)
+	ctx.Header(headerTokenKey, "")
 	ginutil.Response(ctx, nil, nil)
 }
 
@@ -728,8 +713,8 @@ func (srv *UserService) sendCode(req *CodeRequest) (map[string]interface{}, erro
 
 // hasAdminRole 是否拥有admin
 func (srv *UserService) hasAdminRole(ctx *gin.Context) (bool, *model.User) {
-	token := ctx.GetHeader(headerTokenKey)
-	session := ginutil.GetSession(ctx, token)
+	jwttoken := ctx.GetHeader(headerTokenKey)
+	session := ginutil.GetSession(ctx, jwttoken)
 
 	usr := &model.User{}
 	if err := srv.DB.First(usr, session.(uint)).Error; nil != err {

@@ -2,10 +2,15 @@ package service
 
 import (
 	"errors"
+	"time"
+
+	"github.com/elvis88/baas/common/json"
+	"github.com/elvis88/baas/common/jwt"
 )
 
 const (
 	headerTokenKey = "Authorization"
+	headerUserID   = "UserID"
 	TokenKey       = "baas user secret"
 	CodeLoginKey   = "login"
 	CodePWDKey     = "changepwd"
@@ -54,3 +59,49 @@ var (
 	CHAINID_DEPLOY_ADD_FAIL  = errors.New("链实例添加失败")
 	PARAMS_IS_NOT_ENOUGH     = errors.New("参数不足")
 )
+
+// AuthorizeToken login jwt
+type AuthorizeToken struct {
+	UserID uint  `json:"userID"`
+	Exp    int64 `json:"exp"`
+	Iat    int64 `json:"iat"`
+}
+
+func newAuthorizeToken(UserID uint) *AuthorizeToken {
+	token := &AuthorizeToken{}
+	token.UserID = UserID
+	now := time.Now()
+	token.Exp = now.Add(time.Hour * 1).Unix()
+	token.Iat = now.Unix()
+	return token
+}
+
+func newFromJWT(jwttoken string) *AuthorizeToken {
+	info, ok := jwt.ParseToken(jwttoken, TokenKey)
+	if !ok {
+		return nil
+	}
+	bts, err := json.Marshal(info)
+	if err != nil {
+		panic(err)
+	}
+	token := &AuthorizeToken{}
+	err = json.Unmarshal(bts, token)
+	if err != nil {
+		panic(err)
+	}
+	return token
+}
+
+func (a *AuthorizeToken) toJWT() (string, error) {
+	bts, err := json.Marshal(a)
+	if err != nil {
+		panic(err)
+	}
+	info := make(map[string]interface{})
+	err = json.Unmarshal(bts, &info)
+	if err != nil {
+		panic(err)
+	}
+	return jwt.CreateToken(TokenKey, info)
+}
