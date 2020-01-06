@@ -168,7 +168,7 @@ start() {
 }
 
 stop() {
-    ensure ps aux | grep ${DEPLOY_CMD} | grep -v grep | awk '{print "kill -9 " $2}' | sh
+    ensure ps aux | grep "${DEPLOY_CMD}" | grep -v grep | awk '{print "kill -9 " $2}' | sh
     say "stoped"
 }
 
