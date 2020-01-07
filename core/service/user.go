@@ -732,7 +732,7 @@ func (srv *UserService) hasAdminRole(ctx *gin.Context) (bool, *model.User) {
 }
 
 // UserGetFile 获取文件
-func (srv *UserService) UserGetFile(ctx *gin.Context) {
+func (srv *UserService) UserGetFile(ctx *gin.Context) (sysErr, err error) {
 	nodename := ctx.Param("nodename")
 	action := ctx.Param("action")
 
@@ -740,33 +740,33 @@ func (srv *UserService) UserGetFile(ctx *gin.Context) {
 	cnt := 0
 	// 判断 nodename 是否是自己创建
 	if strings.Compare(action, generate.Application) == 0 {
-		if err := srv.DB.Model(&model.ChainDeploy{}).Where(&model.Chain{
-			Name:   nodename,
-			UserID: cusr.ID,
-		}).Count(&cnt).Error; err != nil {
-			ginutil.Response(ctx, GET_FAIL, err)
-			return
+		// 获取链信息
+		chain := &model.Chain{}
+		if err := srv.DB.Where(&model.Chain{Name: nodename}).Find(chain).Count(&cnt).Error; err != nil {
+			return GET_FAIL, err
+		}
+		// 查询用户是否与链有关联
+		if ok, err := (&ChainDeployService{srv.DB}).userHaveChain(cusr.ID, chain.ID); !ok {
+			return NOPERMISSION, err
 		}
 	} else if strings.Compare(action, generate.Deployment) == 0 {
 		if err := srv.DB.Model(&model.ChainDeploy{}).Where(&model.ChainDeploy{
 			Name:   nodename,
 			UserID: cusr.ID,
 		}).Count(&cnt).Error; err != nil {
-			ginutil.Response(ctx, GET_FAIL, err)
-			return
+			return GET_FAIL, err
 		}
 	} else {
-		ginutil.Response(ctx, ACTION_UNKOWN_TYPE, nil)
-		return
+		return ACTION_UNKOWN_TYPE, nil
 	}
 
 	if cnt == 0 {
 		ginutil.Response(ctx, NOPERMISSION, nil)
-		return
+		return NOPERMISSION, nil
 	}
-
 	usrName := cusr.Name
 	ctx.Request.URL.Path = strings.Replace(ctx.Request.URL.Path, fmt.Sprintf("file/%s/%s", action, nodename), fmt.Sprintf("data/%s/%s/%s", usrName, action, nodename), 1)
+	return nil, nil
 }
 
 // Register ...
@@ -790,7 +790,10 @@ func (srv *UserService) Register(router *gin.Engine, api *gin.RouterGroup) {
 	// 脚本下载
 	api.Static("/data", "./shared/data")
 	api.GET("/file/:action/:nodename/:fname", func(ctx *gin.Context) {
-		srv.UserGetFile(ctx)
+		if sysErr, err := srv.UserGetFile(ctx); nil != sysErr {
+			ginutil.Response(ctx, sysErr, err)
+			return
+		}
 		router.HandleContext(ctx)
 	})
 }
