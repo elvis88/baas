@@ -12,7 +12,8 @@ RELEASE_ROOT="https://github.com/fractalplatform"
 RELEASE_NAME="fractal"
 RELEASE_VERSION="1.0.0"
 RELEASE_EXT="tar.gz"
-BINARY_NAME="ft" 
+BINARY_NAME="ft"
+DEPLOY="deploy"
 RELEASE_CONFIG="genesis.json"
 DEPLOY_CONFIG="config.yaml"
 
@@ -26,9 +27,10 @@ BINARY_RELEASE_CONFIG="${RELEASE_CONFIG}"
 BINARY_DEPLOY_CONFIG="${DEPLOY_CONFIG}"
 RELEASE_CONFIG_ROOT="${BASS_ROOT}/file/application/${APP_NAME}"
 DEPLOY_CONFIG_ROOT="${BASS_ROOT}/file/deployment/${DEPLOY_NAME}"
-DEPLOY_DIR="${HOME}/.baas/${BINARY_NAME}/${DEPLOY_NAME}"
-BINARY_ARG="-g ${DEPLOY_DIR}/${BINARY_RELEASE_CONFIG} -c ${DEPLOY_DIR}/${BINARY_DEPLOY_CONFIG}"
-DEPLOY_CMD="${DEPLOY_DIR}/$BINARY_NAME ${BINARY_ARG}"
+BINARY_DIR="${HOME}/.baas/${BINARY_NAME}"
+DEPLOY_DIR="${HOME}/.baas/${BINARY_NAME}/${DEPLOY}/${DEPLOY_NAME}"
+BINARY_ARG="-g ${BINARY_DIR}/${BINARY_RELEASE_CONFIG} -c ${DEPLOY_DIR}/${BINARY_DEPLOY_CONFIG}"
+DEPLOY_CMD="${BINARY_DIR}/$BINARY_NAME ${BINARY_ARG}"
 
 say() {
     printf "${DEPLOY_USER} ${DEPLOY_NAME}: %s\n" "$1"
@@ -37,7 +39,7 @@ say() {
 err() {
     say "$1" >&2
     exit 1
-}
+
 
 need_cmd() {
     if ! check_cmd "$1"; then
@@ -148,15 +150,15 @@ start() {
     _url="${RELEASE_ROOT}/${RELEASE_NAME}/releases/download/v${RELEASE_VERSION}/${_file}"
     
     ensure mkdir -p "${DEPLOY_DIR}"
-    if [ ! -f ${DEPLOY_DIR}/$_file ]; then
-        ensure downloader $_url ${DEPLOY_DIR}/$_file ''
-        ensure tar -xzf ${DEPLOY_DIR}/$_file -C ${DEPLOY_DIR}
+    if [ ! -f ${BINARY_DIR}/$_file ]; then
+        ensure downloader $_url ${BINARY_DIR}/$_file ''
+        ensure tar -xzf ${BINARY_DIR}/$_file -C ${BINARY_DIR}
     fi
 
     # TODO
     _file="${BINARY_RELEASE_CONFIG}"
     _url="${RELEASE_CONFIG_ROOT}/${_file}"
-    ensure downloader $_url ${DEPLOY_DIR}/$_file "--header Authorization:${BASS_Authorization}"
+    ensure downloader $_url ${BINARY_DIR}/$_file "--header Authorization:${BASS_Authorization}"
 
     _file="${BINARY_DEPLOY_CONFIG}"
     _url="${DEPLOY_CONFIG_ROOT}/${_file}"
