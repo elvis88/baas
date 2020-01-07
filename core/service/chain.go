@@ -23,6 +23,25 @@ type requestChainParam struct {
 	Description string `json:"description"`
 }
 
+func IsValidOrgChain(db *gorm.DB, chainName string) (bool, error) {
+	orginChain := &model.Chain{}
+	if err := db.Where(&model.Chain{Name: chainName}).First(orginChain).Error; err != nil || orginChain.ID == 0 {
+		return false, CHAINID_NOT_EXIST
+	}
+
+	// 源链必须是admin创建的
+	admin := &model.User{}
+	if err := db.First(admin, orginChain.UserID).Error; err != nil {
+		return false, nil
+	}
+
+	if admin.Name != "admin" {
+		return false, NOT_SUPPORT_ORIGIN_CHAIN
+	}
+
+	return true, nil
+}
+
 // 添加链
 func (srv *ChainService) ChainAdd(c *gin.Context) {
 	var err error
@@ -283,10 +302,21 @@ func (srv *ChainService) ChainDelete(c *gin.Context) {
 		return
 	}
 
+	spec := generate.NewAppSpec(user.Name, chain.Name, "")
+	if spec == nil {
+		ginutil.Response(c, DELETE_FAIL, "not support "+chain.Name)
+		return
+	}
+
+	if err = spec.Remove(); nil != err {
+		ginutil.Response(c, DELETE_FAIL, err)
+		return
+	}
+
 	// 删除chain的数据
 	deleteDB := srv.DB.Unscoped().Where(chain).Delete(model.Chain{})
 	if err := deleteDB.Error; nil != err {
-		ginutil.Response(c, DELETE_FAIL, nil)
+		ginutil.Response(c, DELETE_FAIL, err)
 		return
 	}
 

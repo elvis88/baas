@@ -149,18 +149,18 @@ start() {
     
     ensure mkdir -p "${DEPLOY_DIR}"
     if [ ! -f ${DEPLOY_DIR}/$_file ]; then
-        ensure downloader $_url ${DEPLOY_DIR}/$_file
+        ensure downloader $_url ${DEPLOY_DIR}/$_file ''
         ensure tar -xzf ${DEPLOY_DIR}/$_file -C ${DEPLOY_DIR}
     fi
 
     # TODO
     _file="${BINARY_RELEASE_CONFIG}"
     _url="${RELEASE_CONFIG_ROOT}/${_file}"
-    ensure downloader $_url ${DEPLOY_DIR}/$_file "--header \"Authorization:${BASS_Authorization}\""
+    ensure downloader $_url ${DEPLOY_DIR}/$_file "--header Authorization:${BASS_Authorization}"
 
     _file="${BINARY_DEPLOY_CONFIG}"
     _url="${DEPLOY_CONFIG_ROOT}/${_file}"
-    ensure downloader $_url ${DEPLOY_DIR}/$_file "--header \"Authorization:${BASS_Authorization}\""
+    ensure downloader $_url ${DEPLOY_DIR}/$_file "--header Authorization:${BASS_Authorization}"
 
     local _timestamp="$(date "+%Y%m%d%H%M%S")"
     ensure  ${DEPLOY_CMD} > ${DEPLOY_DIR}/${_timestamp}_${DEPLOY_NAME}.log 2>&1 &

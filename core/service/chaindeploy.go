@@ -179,6 +179,17 @@ func (srv *ChainDeployService) ChainDeployDelete(ctx *gin.Context) {
 		return
 	}
 
+	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, "", "")
+	if spec == nil {
+		ginutil.Response(ctx, DELETE_FAIL, "not support "+chainDeploy.Name)
+		return
+	}
+
+	if err = spec.Remove(); nil != err {
+		ginutil.Response(ctx, DELETE_FAIL, err)
+		return
+	}
+
 	deleteDB := srv.DB.Unscoped().Delete(chainDeploy)
 	if err = deleteDB.Error; nil != err {
 		ginutil.Response(ctx, DELETE_FAIL, nil)
