@@ -91,7 +91,7 @@ func (srv *ChainService) ChainAdd(c *gin.Context) {
 
 	spec := generate.NewAppSpec(user.Name, chain.Name, orginChain.Name)
 	if spec == nil {
-		ginutil.Response(c, ADD_CHAIN_FAIL, "not support "+orginChain.Name)
+		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, spec)
 		return
 	}
 	err = spec.Build()
@@ -181,7 +181,7 @@ func (srv *ChainService) ChainJoin(c *gin.Context) {
 
 	spec := generate.NewAppSpec(joinedChainUser.Name, joinedChain.Name, originChain.Name)
 	if spec == nil {
-		ginutil.Response(c, ADD_CHAIN_FAIL, "not support "+originChain.Name)
+		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, nil)
 		return
 	}
 	err = spec.Join(user.Name)
@@ -292,6 +292,13 @@ func (srv *ChainService) ChainDelete(c *gin.Context) {
 		return
 	}
 
+	// 获取源链信息
+	orginChain := &model.Chain{}
+	if err := srv.DB.First(orginChain, chain.OriginID).Error; err != nil {
+		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, err)
+		return
+	}
+
 	// 获取账户信息
 	userService := &UserService{DB: srv.DB}
 	_, user := userService.hasAdminRole(c)
@@ -302,9 +309,9 @@ func (srv *ChainService) ChainDelete(c *gin.Context) {
 		return
 	}
 
-	spec := generate.NewAppSpec(user.Name, chain.Name, "")
+	spec := generate.NewAppSpec(user.Name, chain.Name, orginChain.Name)
 	if spec == nil {
-		ginutil.Response(c, DELETE_FAIL, "not support "+chain.Name)
+		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, nil)
 		return
 	}
 
@@ -313,13 +320,22 @@ func (srv *ChainService) ChainDelete(c *gin.Context) {
 		return
 	}
 
-	// 删除chain的数据
-	deleteDB := srv.DB.Unscoped().Where(chain).Delete(model.Chain{})
-	if err := deleteDB.Error; nil != err {
+	tx := srv.DB.Begin()
+	if ok, err := chainDeploySDelete(user, chain, orginChain.Name, tx); !ok {
+		tx.Rollback()
 		ginutil.Response(c, DELETE_FAIL, err)
 		return
 	}
 
+	// 删除chain的数据
+	deleteDB := srv.DB.Unscoped().Where(chain).Delete(model.Chain{})
+	if err := deleteDB.Error; nil != err {
+		tx.Rollback()
+		ginutil.Response(c, DELETE_FAIL, err)
+		return
+	}
+
+	tx.Commit()
 	ginutil.Response(c, nil, nil)
 }
 
@@ -465,7 +481,7 @@ func (srv *ChainService) ChainGetConfig(c *gin.Context) {
 
 	spec := generate.NewAppSpec(user.Name, chain.Name, orgChain.Name)
 	if spec == nil {
-		ginutil.Response(c, nil, nil)
+		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, nil)
 		return
 	}
 	config, err := spec.GetConfig()
@@ -513,7 +529,7 @@ func (srv *ChainService) ChainSetConfig(c *gin.Context) {
 
 	spec := generate.NewAppSpec(user.Name, chain.Name, orgChain.Name)
 	if spec == nil {
-		ginutil.Response(c, nil, nil)
+		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, nil)
 		return
 	}
 	err = spec.SetConfig(chainConfig.Config)

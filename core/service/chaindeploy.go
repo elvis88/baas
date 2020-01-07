@@ -36,6 +36,33 @@ func (srv *ChainDeployService) userHaveChain(userID, chainID uint) (b bool, err 
 	return true, nil
 }
 
+func chainDeploySDelete(user *model.User, chain *model.Chain, orgName string, tx *gorm.DB) (b bool, err error) {
+	// 获取chainDeploy 列表
+	var chainDeploys []*model.ChainDeploy
+	if err = tx.Where(&model.ChainDeploy{UserID: user.ID, ChainID: chain.ID}).Find(&chainDeploys).Error; nil != err {
+		return false, err
+	}
+
+	for _, appDeploy := range chainDeploys {
+		spec := generate.NewAppDeploySpec(user.Name, appDeploy.Name, orgName, "")
+		if spec == nil {
+			return false, NOT_SUPPORT_ORIGIN_CHAIN
+		}
+
+		if err = spec.Remove(); nil != err {
+			return false, DELETE_FAIL
+		}
+	}
+
+	if err := tx.Unscoped().Where(&model.ChainDeploy{
+		UserID:  user.ID,
+		ChainID: chain.ID,
+	}).Delete(&model.ChainDeploy{}).Error; nil != err {
+		return false, err
+	}
+	return true, nil
+}
+
 // ChainDeployAdd 新增
 func (srv *ChainDeployService) ChainDeployAdd(ctx *gin.Context) {
 	// 获取请求参数
@@ -179,7 +206,18 @@ func (srv *ChainDeployService) ChainDeployDelete(ctx *gin.Context) {
 		return
 	}
 
-	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, "", "")
+	chain := &model.Chain{}
+	if err := srv.DB.First(chain, chainDeploy.ChainID).Error; err != nil {
+		ginutil.Response(ctx, CHAIN_DEPLOY_NOT_EXIST, err)
+		return
+	}
+	originChain := &model.Chain{}
+	if err := srv.DB.First(originChain, chain.OriginID).Error; err != nil {
+		ginutil.Response(ctx, CHAIN_DEPLOY_NOT_EXIST, err)
+		return
+	}
+
+	spec := generate.NewAppDeploySpec(user.Name, chainDeploy.Name, originChain.Name, "")
 	if spec == nil {
 		ginutil.Response(ctx, DELETE_FAIL, "not support "+chainDeploy.Name)
 		return
