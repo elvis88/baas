@@ -23,6 +23,7 @@ type requestChainParam struct {
 	Description string `json:"description"`
 }
 
+// IsValidOrgChain verify that the chain is supported
 func IsValidOrgChain(db *gorm.DB, chainName string) (bool, error) {
 	orginChain := &model.Chain{}
 	if err := db.Where(&model.Chain{Name: chainName}).First(orginChain).Error; err != nil || orginChain.ID == 0 {
@@ -42,7 +43,7 @@ func IsValidOrgChain(db *gorm.DB, chainName string) (bool, error) {
 	return true, nil
 }
 
-// 添加链
+// ChainAdd add a new chain
 func (srv *ChainService) ChainAdd(c *gin.Context) {
 	var err error
 
@@ -120,7 +121,7 @@ func (srv *ChainService) ChainAdd(c *gin.Context) {
 	ginutil.Response(c, nil, chain)
 }
 
-// 获取公有链列表
+// PublicChainList get public chain list.
 func (srv *ChainService) PublicChainList(c *gin.Context) {
 	req := &PagerRequest{
 		Page:     0,
@@ -145,7 +146,7 @@ func (srv *ChainService) PublicChainList(c *gin.Context) {
 	ginutil.Response(c, nil, chains)
 }
 
-// 添加已有链（admin不可以添加别人的链）
+// ChainJoin Join an existing chain.
 func (srv *ChainService) ChainJoin(c *gin.Context) {
 	var err error
 
@@ -198,7 +199,7 @@ func (srv *ChainService) ChainJoin(c *gin.Context) {
 	ginutil.Response(c, nil, chain)
 }
 
-// 获取来源链列表
+// OriginChainList gets a list of supported blockchains.
 func (srv *ChainService) OriginChainList(c *gin.Context) {
 	req := &PagerRequest{
 		Page:     0,
@@ -230,7 +231,7 @@ func (srv *ChainService) OriginChainList(c *gin.Context) {
 	ginutil.Response(c, nil, chains)
 }
 
-// 获取链列表（admin可以查看任何人的链）
+// ChainList gets a list of user-owned blockchains
 func (srv *ChainService) ChainList(c *gin.Context) {
 	req := &PagerRequest{
 		Page:     0,
@@ -268,7 +269,8 @@ func (srv *ChainService) ChainList(c *gin.Context) {
 	ginutil.Response(c, nil, chains)
 }
 
-// 删除链
+// ChainDelete remove a block chain.
+// Also remove the nodes under the chain.
 func (srv *ChainService) ChainDelete(c *gin.Context) {
 	var err error
 
@@ -339,7 +341,7 @@ func (srv *ChainService) ChainDelete(c *gin.Context) {
 	ginutil.Response(c, nil, nil)
 }
 
-// 退出链
+// ChainExit exit the join chain
 func (srv *ChainService) ChainExit(c *gin.Context) {
 	var err error
 
@@ -363,6 +365,13 @@ func (srv *ChainService) ChainExit(c *gin.Context) {
 		return
 	}
 
+	// 获取源链信息
+	orginChain := &model.Chain{}
+	if err := srv.DB.First(orginChain, chain.OriginID).Error; err != nil {
+		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, err)
+		return
+	}
+
 	// 获取账户信息
 	userService := &UserService{DB: srv.DB}
 	_, user := userService.hasAdminRole(c)
@@ -373,16 +382,36 @@ func (srv *ChainService) ChainExit(c *gin.Context) {
 		return
 	}
 
-	// 删除联系
-	if err = srv.DB.Model(user).Association("OwnerChains").Delete(chain).Error; nil != err {
+	spec := generate.NewAppSpec(user.Name, chain.Name, orginChain.Name)
+	if spec == nil {
+		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, nil)
+		return
+	}
+
+	if err = spec.Remove(); nil != err {
 		ginutil.Response(c, DELETE_FAIL, err)
 		return
 	}
 
+	tx := srv.DB.Begin()
+	if ok, err := chainDeploySDelete(user, chain, orginChain.Name, tx); !ok {
+		tx.Rollback()
+		ginutil.Response(c, DELETE_FAIL, err)
+		return
+	}
+
+	// 删除联系
+	if err = tx.Model(user).Association("OwnerChains").Delete(chain).Error; nil != err {
+		tx.Rollback()
+		ginutil.Response(c, DELETE_FAIL, err)
+		return
+	}
+
+	tx.Commit()
 	ginutil.Response(c, nil, chain)
 }
 
-// 链更新
+// ChainUpdate update chain information
 func (srv *ChainService) ChainUpdate(c *gin.Context) {
 	// 读取主体信息
 	var err error
@@ -444,7 +473,7 @@ type requestChainConfig struct {
 	Config string `json:"config"`
 }
 
-// 用户获得链config内容
+// ChainGetConfig get the chain configuration file.
 func (srv *ChainService) ChainGetConfig(c *gin.Context) {
 	var err error
 
@@ -492,7 +521,7 @@ func (srv *ChainService) ChainGetConfig(c *gin.Context) {
 	ginutil.Response(c, nil, config)
 }
 
-// 用户修改链config内容
+// ChainSetConfig set up the chain configuration file
 func (srv *ChainService) ChainSetConfig(c *gin.Context) {
 	var err error
 
@@ -540,7 +569,7 @@ func (srv *ChainService) ChainSetConfig(c *gin.Context) {
 	ginutil.Response(c, nil, nil)
 }
 
-// Register
+// Register api
 func (srv *ChainService) Register(router *gin.Engine, api *gin.RouterGroup) {
 	chain := api.Group("/chain")
 	chain.POST("/add", srv.ChainAdd)
