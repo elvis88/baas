@@ -1,85 +1,92 @@
 package model
 
 import (
-	"time"
+	"github.com/jinzhu/gorm"
 )
-
-type Model struct {
-	ID        uint       `json:"id" gorm:"primary_key"`
-	CreatedAt time.Time  `json:"created,omitempty"`
-	UpdatedAt time.Time  `json:"updated,omitempty"`
-	DeletedAt *time.Time `json:"deleted,omitempty" sql:"index"`
-}
 
 // User 用户表
 type User struct {
-	Model
+	gorm.Model
 
-	Name      string `json:"name" gorm:"type:varchar(100);not null;unique"`
-	Password  string `json:"pwd" gorm:"not null"`
-	Nick      string `json:"nick" gorm:"not null"`
-	Email     string `json:"email" gorm:"unique"`
-	Telephone string `json:"tel" gorm:"column:tel;unique"`
+	Name      string `gorm:"not null;unique"`
+	Password  string `gorm:"not null"`
+	Nick      string `gorm:"not null"`
+	Email     string `gorm:"unique"`
+	Telephone string `gorm:"unique"`
 
-	Roles          []*Role          `json:"role,omitempty" gorm:"many2many:user_role;"`
-	Chains         []*Chain         `json:"chain,omitempty"`
-	OwnerChains    []*Chain         `json:"ownerchain,omitempty" gorm:"many2many:user_chain;"`
-	ChainDeploys   []*ChainDeploy   `json:"chaindeploy,omitempty"`
-	Browsers       []*Browser       `json:"browser,omitempty"`
-	BrowserDeploys []*BrowserDeploy `json:"browserdeploy,omitempty"`
+	OwnerChains []*Chain `json:"-" gorm:"many2many:user_chain;"`
 }
 
-// Role 角色表
-type Role struct {
-	Model
-
-	Key         string `gorm:"type:varchar(100);not null;unique"`
-	Name        string `gorm:"type:varchar(100);not null;unique"`
-	Description string `gorm:"column:desc"`
-}
-
-// Chain 区块链表
+// Chain 区块链项目表
 type Chain struct {
-	Model
+	gorm.Model
 
 	Name        string `gorm:"not null;unique"`
-	Url         string
 	Description string `gorm:"column:desc"`
+	URL         string
 	Public      bool
-	OriginID    uint
+	AncestorID  uint
 
-	UserID uint `gorm:"column:owner_id"`
+	UserID uint
+}
+
+// ChainStatus 区块链项目状态表
+type ChainStatus struct {
+	gorm.Model
+
+	Name        string `gorm:"not null;unique"`
+	Description string `gorm:"column:desc"`
+	RPC         string `gorm:"not null;unique"`
+
+	ChainID uint
 }
 
 // ChainDeploy 区块链部署表
 type ChainDeploy struct {
-	Model
+	gorm.Model
 
-	Name        string `gorm:"type:varchar(100);not null;unique"`
+	Name        string `gorm:"not null;unique"`
 	Description string `gorm:"column:desc"`
 
-	UserID  uint `gorm:"column:user_id"`
-	ChainID uint `gorm:"column:chain_id"`
+	ChainDeployNodes []*ChainDeployNode `json:"-"`
+
+	ChainID uint
+	UserID  uint
 }
 
-// Browser 浏览器表
-type Browser struct {
-	Model
+// Agent 监控进程表
+type Agent struct {
+	gorm.Model
 
-	Name        string `gorm:"type:varchar(100);not null;unique"`
+	Name        string `gorm:"not null;unique"`
 	Description string `gorm:"column:desc"`
+	Status      string
 
-	UserID        uint
-	BrowserDeploy []*BrowserDeploy
+	ChainDeployNodes []*ChainDeployNode `json:"-"`
+
+	UserID uint
 }
 
-// BrowserDeploy 浏览器部署表
-type BrowserDeploy struct {
-	Model
+// ChainDeployNode 区块链节点表
+type ChainDeployNode struct {
+	gorm.Model
 
-	Name        string `gorm:"type:varchar(100);not null;unique"`
+	Name        string `gorm:"not null;unique"`
 	Description string `gorm:"column:desc"`
+	Status      string
 
-	UserID    uint
-	BrowserID uint
+	AgentID       uint
+	ChainDeployID uint
+
+	UserID uint
+}
+
+// ChainDeployNodeStatus 区块链节点状态表
+type ChainDeployNodeStatus struct {
+	gorm.Model
+
+	Value string
+
+	ChainDeployNodeID uint
+	ChainStatusID     uint
 }

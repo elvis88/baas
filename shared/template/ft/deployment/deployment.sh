@@ -33,7 +33,7 @@ BINARY_ARG="-g ${BINARY_DIR}/${BINARY_RELEASE_CONFIG} -c ${DEPLOY_DIR}/${BINARY_
 DEPLOY_CMD="${BINARY_DIR}/$BINARY_NAME ${BINARY_ARG}"
 
 say() {
-    printf "${DEPLOY_USER} ${DEPLOY_NAME}: %s\n" "$1"
+    printf "${DEPLOY_NAME}: %s\n" "$1"
 }
 
 err() {
@@ -81,15 +81,15 @@ downloader() {
         need_cmd "$_dld"
     elif [ "$_dld" = curl ]; then
         if ! [[ $1 =~ https ]] || ! check_help_for curl --proto --tlsv1.2; then
-            echo "Warning: Not forcing TLS v1.2, this is potentially less secure"
+            # echo "Warning: Not forcing TLS v1.2, this is potentially less secure"
             curl --silent --show-error --fail --location "$1" --output "$2" $3
         else
-            echo "curl --proto '=https' --tlsv1.2 --silent --show-error --fail --location $1 --output $2"
+            # echo "curl --proto '=https' --tlsv1.2 --silent --show-error --fail --location $1 --output $2"
             curl --proto '=https' --tlsv1.2 --silent --show-error --fail --location "$1" --output "$2" $3
         fi
     elif [ "$_dld" = wget ]; then
         if [[ $1 =~ https ]] || ! check_help_for wget --https-only --secure-protocol; then
-            echo "Warning: Not forcing TLS v1.2, this is potentially less secure"
+            # echo "Warning: Not forcing TLS v1.2, this is potentially less secure"
             wget "$1" -O "$2" $3
         else
             wget --https-only --secure-protocol=TLSv1_2 "$1" -O "$2" $3

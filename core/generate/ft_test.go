@@ -34,7 +34,7 @@ func TestFTSpec(t *testing.T) {
 }
 
 func TestFTDeploySpec(t *testing.T) {
-	spec := NewFTDeploySpec("testuser", "fttest", "ft")
+	spec := NewFTDeploySpec("testuser", "ftdeploy", "ft", "ft")
 
 	if err := spec.Build(); err != nil {
 		t.Error(err)

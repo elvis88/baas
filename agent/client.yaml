@@ -1,0 +1,4 @@
+client:
+    ws: ws://127.0.0.1:8080/ws/client #自动重连
+    reconnect: 30 #自动重连间隔(s)
+    period: 10

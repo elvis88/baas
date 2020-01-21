@@ -1,5 +1,5 @@
 baas:
-    dbengine: mysql
+    dbengine: sqlite3
     sqlite3:
       root: baas.db
     mysql:

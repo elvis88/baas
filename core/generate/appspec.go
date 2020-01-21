@@ -71,7 +71,7 @@ func (app *ApplicationSpec) GetConfigFile() string {
 // Join 加入该应用
 func (app *ApplicationSpec) Join(user string) error {
 	cdatadir := app.datadir()
-	ndatadir := strings.Replace(cdatadir, filepath.Join(app.Account, app.Name, Application), filepath.Join(user, app.Name, Application), 1)
+	ndatadir := strings.Replace(cdatadir, filepath.Join(app.Account, Application, app.Name), filepath.Join(user, Application, app.Name), 1)
 	if err := util.CreatedDir(ndatadir); err != nil {
 		return err
 	}
@@ -79,4 +79,11 @@ func (app *ApplicationSpec) Join(user string) error {
 	cfilename := filepath.Join(cdatadir, app.CoinfigFileName)
 	nfilename := filepath.Join(ndatadir, app.CoinfigFileName)
 	return os.Symlink(cfilename, nfilename)
+}
+
+// Unjoin 加入该应用
+func (app *ApplicationSpec) Unjoin(user string) error {
+	cdatadir := app.datadir()
+	ndatadir := strings.Replace(cdatadir, filepath.Join(app.Account, Application, app.Name), filepath.Join(user, Application, app.Name), 1)
+	return util.RemoveDir(ndatadir)
 }

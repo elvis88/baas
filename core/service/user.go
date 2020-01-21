@@ -51,7 +51,7 @@ func (srv *UserService) UserLogin(ctx *gin.Context) {
 	usr := &model.User{}
 	if len(login.UserName) != 0 { // 密码登陆
 		// 用户是否存在
-		if err := srv.DB.Preload("Roles").Where(&model.User{
+		if err := srv.DB.Where(&model.User{
 			Name: login.UserName,
 		}).First(usr).Error; err != nil {
 
@@ -99,12 +99,6 @@ func (srv *UserService) UserLogin(ctx *gin.Context) {
 		if len(login.Email) != 0 { // 邮箱验证码
 			usr.Name = sms.GetRandomString(6)
 			usr.Email = login.Email
-			userRole := &model.Role{}
-			if err := srv.DB.Where(&model.Role{
-				Key: "user",
-			}).First(userRole).Error; err == nil {
-				usr.Roles = append(usr.Roles, userRole)
-			}
 			if err := srv.DB.FirstOrCreate(usr, &model.User{
 				Email: login.Email,
 			}).Error; err != nil {
@@ -114,12 +108,6 @@ func (srv *UserService) UserLogin(ctx *gin.Context) {
 		} else if len(login.Telephone) != 0 { // 手机验证码登陆
 			usr.Name = sms.GetRandomString(6)
 			usr.Telephone = login.Telephone
-			userRole := &model.Role{}
-			if err := srv.DB.Where(&model.Role{
-				Key: "user",
-			}).First(userRole).Error; err == nil {
-				usr.Roles = append(usr.Roles, userRole)
-			}
 			if err := srv.DB.FirstOrCreate(usr, &model.User{
 				Telephone: login.Telephone,
 			}).Error; err != nil {
@@ -163,7 +151,7 @@ func (srv *UserService) UserAuthorize(ctx *gin.Context) {
 
 	usr := &model.User{}
 	if err := srv.DB.Where(&model.User{
-		Model: model.Model{
+		Model: gorm.Model{
 			ID: token.UserID,
 		},
 	}).First(usr).Error; err != nil {
@@ -186,8 +174,8 @@ func (srv *UserService) UserInfo(ctx *gin.Context) {
 	token := ctx.GetHeader(headerTokenKey)
 	session := ginutil.GetSession(ctx, token)
 	usr := &model.User{}
-	srv.DB.Preload("Roles").Where(&model.User{
-		Model: model.Model{
+	srv.DB.Where(&model.User{
+		Model: gorm.Model{
 			ID: session.(uint),
 		},
 	}).First(usr)
@@ -213,12 +201,12 @@ func (srv *UserService) UserList(ctx *gin.Context) {
 	usrs := []*model.User{}
 	offset := req.Page * req.PageSize
 	if has, cusr := srv.hasAdminRole(ctx); !has {
-		if err := srv.DB.Preload("Roles").Where(cusr).Offset(offset).Limit(req.PageSize).Find(&usrs).Error; err != nil {
+		if err := srv.DB.Where(cusr).Offset(offset).Limit(req.PageSize).Find(&usrs).Error; err != nil {
 			ginutil.Response(ctx, GET_FAIL, err.Error())
 			return
 		}
 	} else {
-		if err := srv.DB.Preload("Roles").Offset(offset).Limit(req.PageSize).Find(&usrs).Error; err != nil {
+		if err := srv.DB.Offset(offset).Limit(req.PageSize).Find(&usrs).Error; err != nil {
 			ginutil.Response(ctx, GET_FAIL, err.Error())
 			return
 		}
@@ -256,14 +244,6 @@ func (srv *UserService) UserAdd(ctx *gin.Context) {
 		Nick:      userRequest.Nick,
 		Telephone: userRequest.Telephone,
 		Email:     userRequest.Email,
-	}
-
-	// 添加权限
-	userRole := &model.Role{}
-	if err := srv.DB.Where(&model.Role{
-		Key: "user",
-	}).First(userRole).Error; err == nil {
-		usr.Roles = append(usr.Roles, userRole)
 	}
 
 	// 新建用户
@@ -321,7 +301,7 @@ func (srv *UserService) UserUpdate(ctx *gin.Context) {
 	usr.Email = ""
 
 	if res := srv.DB.Model(&model.User{
-		Model: model.Model{
+		Model: gorm.Model{
 			ID: usr.ID,
 		},
 	}).Updates(usr); res.RowsAffected == 0 {
@@ -362,17 +342,9 @@ func (srv *UserService) UserUpdateRole(ctx *gin.Context) {
 		return
 	}
 
-	roles := []*model.Role{}
-	if err := srv.DB.Find(roles).Error; err != nil {
-		ginutil.Response(ctx, ROLE_WRONG, err)
-		return
-	}
-
-	usr := &model.User{
-		Roles: roles,
-	}
+	usr := &model.User{}
 	if err := srv.DB.Model(&model.User{
-		Model: model.Model{
+		Model: gorm.Model{
 			ID: req.UserID,
 		},
 	}).Updates(usr).Error; err != nil {
@@ -439,7 +411,7 @@ func (srv *UserService) UserChangePWD(ctx *gin.Context) {
 		Password: password,
 	}
 	if res := srv.DB.Model(&model.User{
-		Model: model.Model{
+		Model: gorm.Model{
 			ID: id,
 		},
 	}).Updates(usr); res.RowsAffected == 0 {
@@ -503,7 +475,7 @@ func (srv *UserService) UserChangeTel(ctx *gin.Context) {
 		Telephone: req.Telephone,
 	}
 	if res := srv.DB.Model(&model.User{
-		Model: model.Model{
+		Model: gorm.Model{
 			ID: id,
 		},
 	}).Updates(usr); res.RowsAffected == 0 {
@@ -567,7 +539,7 @@ func (srv *UserService) UserChangeEmail(ctx *gin.Context) {
 		Email: req.Email,
 	}
 	if res := srv.DB.Model(&model.User{
-		Model: model.Model{
+		Model: gorm.Model{
 			ID: id,
 		},
 	}).Updates(usr); res.RowsAffected == 0 {
@@ -721,13 +693,6 @@ func (srv *UserService) hasAdminRole(ctx *gin.Context) (bool, *model.User) {
 		return false, nil
 	}
 
-	roles := []*model.Role{}
-	srv.DB.Model(usr).Related(&roles, "Roles")
-	for _, role := range roles {
-		if strings.Compare(role.Key, "admin") == 0 {
-			return true, usr
-		}
-	}
 	return false, usr
 }
 
@@ -742,7 +707,9 @@ func (srv *UserService) UserGetFile(ctx *gin.Context) (sysErr, err error) {
 	if strings.Compare(action, generate.Application) == 0 {
 		// 获取链信息
 		chain := &model.Chain{}
-		if err := srv.DB.Where(&model.Chain{Name: nodename}).Find(chain).Count(&cnt).Error; err != nil {
+		if err := srv.DB.Model(&model.Chain{}).Where(&model.Chain{
+			Name: nodename,
+		}).Find(chain).Count(&cnt).Error; err != nil {
 			return GET_FAIL, err
 		}
 		// 查询用户是否与链有关联
@@ -773,25 +740,26 @@ func (srv *UserService) UserGetFile(ctx *gin.Context) (sysErr, err error) {
 func (srv *UserService) Register(router *gin.Engine, api *gin.RouterGroup) {
 	api.POST("/user/add", srv.UserAdd)
 	api.POST("/user/login", srv.UserLogin)
-	api.POST("/user/logincode", srv.UserLoginCode)
+	//api.POST("/user/logincode", srv.UserLoginCode)
 	//认证校验
 	api.Use(srv.UserAuthorize)
-	api.POST("/user/logout", srv.UserLogout)
+	// api.POST("/user/logout", srv.UserLogout)
 	api.POST("/user/info", srv.UserInfo)
 	api.POST("/user/list", srv.UserList)
-	//api.POST("/user/delete", srv.UserDelete)
-	//api.POST("/user/update", srv.UserUpdate)
-	api.POST("/user/updaterole", srv.UserUpdateRole)
-	api.POST("/user/changepwd", srv.UserChangePWD)
-	api.POST("/user/changetel", srv.UserChangeTel)
-	api.POST("/user/changeemail", srv.UserChangeEmail)
-	api.POST("/user/changecode", srv.UserChangeCode)
+	// api.POST("/user/delete", srv.UserDelete)
+	// api.POST("/user/update", srv.UserUpdate)
+	// api.POST("/user/updaterole", srv.UserUpdateRole)
+	// api.POST("/user/changepwd", srv.UserChangePWD)
+	// api.POST("/user/changetel", srv.UserChangeTel)
+	// api.POST("/user/changeemail", srv.UserChangeEmail)
+	// api.POST("/user/changecode", srv.UserChangeCode)
 
 	// 脚本下载
 	api.Static("/data", "./shared/data")
+	api.Static("/agent", "./shared/agent")
 	api.GET("/file/:action/:nodename/:fname", func(ctx *gin.Context) {
 		if sysErr, err := srv.UserGetFile(ctx); nil != sysErr {
-			ginutil.Response(ctx, sysErr, err)
+			ginutil.Response(ctx, sysErr, err.Error())
 			return
 		}
 		router.HandleContext(ctx)

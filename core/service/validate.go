@@ -136,24 +136,33 @@ func (r *CodeRequest) validateGetCode() (bool, *string) {
 	return executeValidation(r, rules, messages)
 }
 
+type requestChainParam struct {
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	URL         string `json:"url"`
+	Public      bool   `json:"public"`
+	AncestorID  uint   `json:"ancestorID"`
+	Description string `json:"description"`
+}
+
 // Chain api params validate.
-func (r *requestChainParam) validateChainAdd() (bool, *string) {
+func (r *requestChainParam) validateAdd() (bool, *string) {
 	rules := govalidator.MapData{
-		"name":     []string{"required"},
-		"url":      []string{"url"},
-		"originID": []string{"required"},
+		"name":       []string{"required"},
+		"url":        []string{"url"},
+		"ancestorID": []string{"required"},
 	}
 
 	messages := govalidator.MapData{
-		"name":     []string{"required:名字不能为空"},
-		"url":      []string{"url:Url格式不正确"},
-		"originID": []string{"required:必须指定链来源"},
+		"name":       []string{"required:名字不能为空"},
+		"url":        []string{"url:Url格式不正确"},
+		"ancestorID": []string{"required:必须指定链来源"},
 	}
 
 	return executeValidation(r, rules, messages)
 }
 
-func (r *requestChainParam) validateChainID() (bool, *string) {
+func (r *requestChainParam) validateID() (bool, *string) {
 	rules := govalidator.MapData{
 		"id": []string{"required"},
 	}
@@ -165,7 +174,7 @@ func (r *requestChainParam) validateChainID() (bool, *string) {
 	return executeValidation(r, rules, messages)
 }
 
-func (r *requestChainParam) validateChainUpdate() (bool, *string) {
+func (r *requestChainParam) validateUpdate() (bool, *string) {
 	rules := govalidator.MapData{
 		"id":   []string{"required"},
 		"name": []string{"required"},
@@ -178,6 +187,11 @@ func (r *requestChainParam) validateChainUpdate() (bool, *string) {
 		"url":  []string{"url:Url格式不正确"},
 	}
 	return executeValidation(r, rules, messages)
+}
+
+type requestChainConfig struct {
+	ID     uint   `json:"id"`
+	Config string `json:"config"`
 }
 
 func (r *requestChainConfig) validateGetConfig() (bool, *string) {
@@ -206,8 +220,17 @@ func (r *requestChainConfig) validateSetConfig() (bool, *string) {
 	return executeValidation(r, rules, messages)
 }
 
+// chainDeployValidate
+type requestChainDeployParams struct {
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	UserID      string `json:"userID"`
+	ChainID     uint   `json:"chainID"`
+	Description string `json:"description"`
+}
+
 // Chain deploy api params validate.
-func (r *requestChainDeployParams) validateChainDeployAdd() (bool, *string) {
+func (r *requestChainDeployParams) validateAdd() (bool, *string) {
 	rules := govalidator.MapData{
 		"name":    []string{"required"},
 		"chainID": []string{"required"},
@@ -249,6 +272,11 @@ func (r *requestChainDeployParams) validateChainDeployUpdate() (bool, *string) {
 	return executeValidation(r, rules, messages)
 }
 
+type requestChainDeployConfig struct {
+	ID     uint   `json:"id"`
+	Config string `json:"config"`
+}
+
 func (r *requestChainDeployConfig) validateGetFile() (bool, *string) {
 	rules := govalidator.MapData{
 		"id": []string{"required"},
@@ -270,6 +298,72 @@ func (r *requestChainDeployConfig) validateSetConfig() (bool, *string) {
 	messages := govalidator.MapData{
 		"id":     []string{"required:链ID不能为空"},
 		"config": []string{"required:config文件不能为空"},
+	}
+
+	return executeValidation(r, rules, messages)
+}
+
+type requestAgentParams struct {
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+func (r *requestAgentParams) validateAdd() (bool, *string) {
+	rules := govalidator.MapData{
+		"name": []string{"required"},
+	}
+
+	messages := govalidator.MapData{
+		"name": []string{"required: 名不能为空"},
+	}
+
+	return executeValidation(r, rules, messages)
+}
+
+func (r *requestAgentParams) validateID() (bool, *string) {
+	rules := govalidator.MapData{
+		"id": []string{"required"},
+	}
+
+	messages := govalidator.MapData{
+		"id": []string{"required:实例ID不能为空"},
+	}
+
+	return executeValidation(r, rules, messages)
+}
+
+type requestChainDeloyNodeParams struct {
+	ID            uint   `json:"id"`
+	Name          string `json:"name"`
+	Description   string `json:"description"`
+	AgentID       uint   `json:"agent"`
+	ChainDeployID uint   `json:"chaindeploy"`
+}
+
+func (r *requestChainDeloyNodeParams) validateAdd() (bool, *string) {
+	rules := govalidator.MapData{
+		"name":        []string{"required"},
+		"agent":       []string{"required"},
+		"chaindeploy": []string{"required"},
+	}
+
+	messages := govalidator.MapData{
+		"name":        []string{"required: 名不能为空"},
+		"agent":       []string{"required: agent id不能为空"},
+		"chaindeploy": []string{"required: chaindeploy id不能为空"},
+	}
+
+	return executeValidation(r, rules, messages)
+}
+
+func (r *requestChainDeloyNodeParams) validateID() (bool, *string) {
+	rules := govalidator.MapData{
+		"id": []string{"required"},
+	}
+
+	messages := govalidator.MapData{
+		"id": []string{"required:实例ID不能为空"},
 	}
 
 	return executeValidation(r, rules, messages)

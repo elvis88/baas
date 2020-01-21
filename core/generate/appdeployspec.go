@@ -71,8 +71,8 @@ func (app *ApplicationDeploySpec) GetConfigFile() string {
 	return filepath.Join(app.datadir(), app.CoinfigFileName)
 }
 
-// GetDeployFile 获取配置文件
-func (app *ApplicationDeploySpec) GetDeployFile() string {
+// GetScriptPath 获取配置文件
+func (app *ApplicationDeploySpec) GetScriptPath() string {
 	return fmt.Sprintf("/file/%s/%s/%s", Deployment, app.Name, DeploymentFile)
 	//return filepath.Join(app.datadir(), DeploymentFile)
 }

@@ -1,8 +1,9 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/elvis88/baas/common/ginutil"
-	"github.com/elvis88/baas/core/generate"
 	"github.com/elvis88/baas/core/model"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
@@ -13,474 +14,300 @@ type ChainService struct {
 	DB *gorm.DB
 }
 
-// chainValidate
-type requestChainParam struct {
-	ID          uint   `json:"id"`
-	Name        string `json:"name"`
-	Url         string `json:"url"`
-	Public      bool   `json:"public"`
-	OriginID    uint   `json:"originID"`
-	Description string `json:"description"`
+// AncestorChain amin创建的链
+func (srv *ChainService) getAncestorChain(ancestorID uint) (*model.Chain, error) {
+	ancestorChain := &model.Chain{}
+	if err := srv.DB.First(ancestorChain, ancestorID).Error; err != nil {
+		return nil, err
+	}
+
+	user := &model.User{}
+	if err := srv.DB.First(user, ancestorChain.UserID).Error; err != nil {
+		return nil, err
+	}
+
+	if user.Name != "admin" {
+		return nil, fmt.Errorf("ancestor id was wrong")
+	}
+	return ancestorChain, nil
 }
 
-// IsValidOrgChain verify that the chain is supported
-func IsValidOrgChain(db *gorm.DB, chainName string) (bool, error) {
-	orginChain := &model.Chain{}
-	if err := db.Where(&model.Chain{Name: chainName}).First(orginChain).Error; err != nil || orginChain.ID == 0 {
-		return false, CHAINID_NOT_EXIST
+// JoinChain public=true的链
+func (srv *ChainService) getJoinChain(joinID uint) (*model.Chain, error) {
+	JoinChain := &model.Chain{}
+	if err := srv.DB.First(JoinChain, joinID).Error; err != nil {
+		return nil, err
 	}
 
-	// 源链必须是admin创建的
-	admin := &model.User{}
-	if err := db.First(admin, orginChain.UserID).Error; err != nil {
-		return false, nil
+	if JoinChain.Public != true {
+		return nil, fmt.Errorf("join id was wrong")
 	}
-
-	if admin.Name != "admin" {
-		return false, NOT_SUPPORT_ORIGIN_CHAIN
-	}
-
-	return true, nil
+	return JoinChain, nil
 }
 
-// ChainAdd add a new chain
-func (srv *ChainService) ChainAdd(c *gin.Context) {
-	var err error
-
-	// 获取主体信息
-	var chainInfo = &requestChainParam{}
-	if err = c.ShouldBindJSON(chainInfo); nil != err {
-		ginutil.Response(c, REQUEST_PARAM_INVALID, err)
-		return
-	}
-
-	// 校验参数
-	if ok, errMsg := chainInfo.validateChainAdd(); !ok {
-		ginutil.Response(c, REQUEST_PARAM_INVALID, errMsg)
-		return
-	}
-
-	// 设置用户ID
-	userService := &UserService{DB: srv.DB}
-	_, user := userService.hasAdminRole(c)
-	chain := &model.Chain{
-		UserID:      user.ID,
-		Name:        chainInfo.Name,
-		Url:         chainInfo.Url,
-		Description: chainInfo.Description,
-		Public:      chainInfo.Public,
-		OriginID:    chainInfo.OriginID,
-	}
-
-	orginChain := &model.Chain{}
-	if err := srv.DB.First(orginChain, chain.OriginID).Error; err != nil {
-		ginutil.Response(c, CHAINID_NOT_EXIST, err)
-		return
-	}
-
-	// 源链必须是admin创建的
-	admin := &model.User{}
-	if err := srv.DB.First(admin, orginChain.UserID).Error; err != nil {
-		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, err)
-		return
-	}
-
-	if admin.Name != "admin" {
-		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, nil)
-		return
-	}
-
-	spec := generate.NewAppSpec(user.Name, chain.Name, orginChain.Name)
-	if spec == nil {
-		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, spec)
-		return
-	}
-	err = spec.Build()
-	if err != nil {
-		ginutil.Response(c, ADD_CHAIN_FAIL, err)
-		return
-	}
-	defer func() {
-		if err != nil {
-			spec.Remove()
-		}
-	}()
-
-	// 创建链
-	if err = srv.DB.Create(chain).Error; nil != err {
-		ginutil.Response(c, ADD_CHAIN_FAIL, err)
-		return
-	}
-
-	// 建立用户与链的关联
-	if err = srv.DB.Model(user).Association("OwnerChains").Append(chain).Error; nil != err {
-		ginutil.Response(c, ADD_CHAIN_FAIL, err)
-		return
-	}
-
-	ginutil.Response(c, nil, chain)
-}
-
-// PublicChainList get public chain list.
-func (srv *ChainService) PublicChainList(c *gin.Context) {
+// AncestorList 获取来源链列表
+func (srv *ChainService) AncestorList(c *gin.Context) {
 	req := &PagerRequest{
 		Page:     0,
 		PageSize: 10,
 	}
-	var err error
-
-	// 获取主体信息
-	if err = c.ShouldBindJSON(req); nil != err {
-		ginutil.Response(c, REQUEST_PARAM_INVALID, err)
+	if err := c.ShouldBindJSON(req); nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
-	offset := req.Page * req.PageSize
 
-	// Get Public chain list
+	user := &model.User{
+		Name: "admin",
+	}
+	if err := srv.DB.First(user).Error; err != nil {
+		panic(err.Error())
+	}
+
 	var chains []*model.Chain
-	if err = srv.DB.Offset(offset).Limit(req.PageSize).Where(&model.Chain{Public: true}).Find(&chains).Error; nil != err {
-		ginutil.Response(c, GET_CHAINS_FAIL, err)
+	offset := req.Page * req.PageSize
+	if err := srv.DB.Where(&model.Chain{
+		UserID: user.ID,
+	}).Offset(offset).Limit(req.PageSize).Find(&chains).Error; err != nil {
+		ginutil.Response(c, EXEC_FAILED, err.Error())
 		return
 	}
-
 	ginutil.Response(c, nil, chains)
 }
 
-// ChainJoin Join an existing chain.
-func (srv *ChainService) ChainJoin(c *gin.Context) {
-	var err error
+// JoinList 获取加入链列表
+func (srv *ChainService) JoinList(c *gin.Context) {
+	req := &PagerRequest{
+		Page:     0,
+		PageSize: 10,
+	}
+	if err := c.ShouldBindJSON(req); nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, err.Error())
+		return
+	}
 
-	// 获取主体信息
+	// 获取账户信息
+	userService := &UserService{DB: srv.DB}
+	_, user := userService.hasAdminRole(c)
+
+	var chains []*model.Chain
+	offset := req.Page * req.PageSize
+	if err := srv.DB.Not(&model.Chain{
+		UserID: user.ID,
+	}).Where(&model.Chain{
+		Public: true,
+	}).Offset(offset).Limit(req.PageSize).Find(&chains).Error; nil != err {
+		ginutil.Response(c, EXEC_FAILED, err.Error())
+		return
+	}
+	ginutil.Response(c, nil, chains)
+}
+
+// List 获取链列表
+func (srv *ChainService) List(c *gin.Context) {
+	req := &PagerRequest{
+		Page:     0,
+		PageSize: 10,
+	}
+	if err := c.ShouldBindJSON(req); nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, err.Error())
+		return
+	}
+
+	// 获取账户信息
+	userService := &UserService{DB: srv.DB}
+	_, user := userService.hasAdminRole(c)
+
+	var chains []*model.Chain
+	offset := req.Page * req.PageSize
+	// 获取与账户关联的链
+	if err := srv.DB.Model(&user).Offset(offset).Limit(req.PageSize).Association("OwnerChains").Find(&chains).Error; nil != err {
+		ginutil.Response(c, err, nil)
+		return
+	}
+	ginutil.Response(c, nil, chains)
+}
+
+// Add 添加链
+func (srv *ChainService) Add(c *gin.Context) {
 	var chainInfo = &requestChainParam{}
-	if err = c.ShouldBindJSON(chainInfo); nil != err {
-		ginutil.Response(c, REQUEST_PARAM_INVALID, err)
+	if err := c.ShouldBindJSON(chainInfo); nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
 
 	// 校验参数
-	if ok, errMsg := chainInfo.validateChainID(); !ok {
+	if ok, errMsg := chainInfo.validateAdd(); !ok {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, errMsg)
+		return
+	}
+
+	// 校验 UserID
+	userService := &UserService{DB: srv.DB}
+	_, user := userService.hasAdminRole(c)
+	if user.Name == "admin" {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, "admin")
+		return
+	}
+
+	chain := &model.Chain{
+		UserID:      user.ID,
+		Name:        chainInfo.Name,
+		URL:         chainInfo.URL,
+		Description: chainInfo.Description,
+		Public:      chainInfo.Public,
+		AncestorID:  chainInfo.AncestorID,
+	}
+
+	// 创建链
+	if err := chain.Add(srv.DB); nil != err {
+		ginutil.Response(c, EXEC_FAILED, err.Error())
+		return
+	}
+	ginutil.Response(c, nil, chain)
+}
+
+// Delete 删除链
+func (srv *ChainService) Delete(c *gin.Context) {
+	var chainInfo = &requestChainParam{}
+	if err := c.ShouldBindJSON(chainInfo); nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, nil)
+		return
+	}
+
+	// 校验参数
+	if ok, errMsg := chainInfo.validateID(); !ok {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, errMsg)
+		return
+	}
+
+	// 查询链信息
+	chain := &model.Chain{}
+	if err := srv.DB.First(chain, chainInfo.ID).Error; nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, err.Error())
+		return
+	}
+
+	// 获取账户信息
+	userService := &UserService{DB: srv.DB}
+	_, user := userService.hasAdminRole(c)
+	if user.Name == "admin" {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, "admin")
+		return
+	}
+	// 验证当前用户是否有修改权(admin 不可以删除)
+	if chain.UserID != user.ID {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, "not self")
+		return
+	}
+
+	// 删除链
+	if err := chain.Remove(srv.DB); nil != err {
+		ginutil.Response(c, EXEC_FAILED, err.Error())
+		return
+	}
+	ginutil.Response(c, nil, nil)
+}
+
+// Join 添加已有链（admin不可以添加别人的链）
+func (srv *ChainService) Join(c *gin.Context) {
+	var chainInfo = &requestChainParam{}
+	if err := c.ShouldBindJSON(chainInfo); nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, err.Error())
+		return
+	}
+
+	// 校验参数
+	if ok, errMsg := chainInfo.validateID(); !ok {
 		ginutil.Response(c, REQUEST_PARAM_INVALID, errMsg)
 		return
 	}
 
 	// 查询链是否存在
-	chain := &model.Chain{}
-	if err = srv.DB.First(chain, chainInfo.ID).Error; nil != err {
-		ginutil.Response(c, CHAINID_NOT_EXIST, err)
+	joinChain, err := srv.getJoinChain(chainInfo.ID)
+	if nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
 
 	// 获取账户
 	userService := &UserService{DB: srv.DB}
 	_, user := userService.hasAdminRole(c)
-
-	joinedChain := chain
-	joinedChainUser := &model.User{}
-	srv.DB.First(joinedChainUser, joinedChain.UserID)
-	originChain := &model.Chain{}
-	srv.DB.First(originChain, joinedChain.OriginID)
-
-	spec := generate.NewAppSpec(joinedChainUser.Name, joinedChain.Name, originChain.Name)
-	if spec == nil {
-		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, nil)
+	if user.Name == "admin" {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, "admin")
 		return
 	}
-	err = spec.Join(user.Name)
-	if err != nil {
-		ginutil.Response(c, ADD_CHAIN_FAIL, err)
+	if user.ID == joinChain.UserID {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, "join self")
 		return
 	}
 
-	// 建立联系
-	if err = srv.DB.Model(user).Association("OwnerChains").Append(chain).Error; nil != err {
-		ginutil.Response(c, ADD_CHAIN_FAIL, err)
+	// 已加入
+	if srv.DB.Model(&model.User{
+		Model: gorm.Model{
+			ID: user.ID,
+		},
+	}).Where(&model.Chain{
+		Model: gorm.Model{
+			ID: chainInfo.ID,
+		},
+	}).Association("OwnerChains").Count() != 0 {
+		ginutil.Response(c, EXEC_FAILED, "joined")
+		return
 	}
 
-	ginutil.Response(c, nil, chain)
+	// 加入链
+	if err := joinChain.Join(srv.DB, user); nil != err {
+		ginutil.Response(c, EXEC_FAILED, err.Error())
+		return
+	}
+	ginutil.Response(c, nil, joinChain)
 }
 
-// OriginChainList gets a list of supported blockchains.
-func (srv *ChainService) OriginChainList(c *gin.Context) {
-	req := &PagerRequest{
-		Page:     0,
-		PageSize: 10,
-	}
-	var err error
-
-	// 获取主体信息
-	if err = c.ShouldBindJSON(req); nil != err {
-		ginutil.Response(c, REQUEST_PARAM_INVALID, err)
-		return
-	}
-	offset := req.Page * req.PageSize
-
-	// 获取ownerID
-	user := &model.User{}
-	if err = srv.DB.Where("name = ?", "admin").First(user).Error; nil != err {
-		ginutil.Response(c, GET_CHAINS_FAIL, err)
-		return
-	}
-
-	// Get Origin chain list
-	var chains []*model.Chain
-	if err = srv.DB.Offset(offset).Limit(req.PageSize).Where(&model.Chain{UserID: user.ID}).Find(&chains).Error; nil != err {
-		ginutil.Response(c, GET_CHAINS_FAIL, err)
-		return
-	}
-
-	ginutil.Response(c, nil, chains)
-}
-
-// ChainList gets a list of user-owned blockchains
-func (srv *ChainService) ChainList(c *gin.Context) {
-	req := &PagerRequest{
-		Page:     0,
-		PageSize: 10,
-	}
-	var err error
-
-	// 获取主体信息
-	if err = c.ShouldBindJSON(req); nil != err {
-		ginutil.Response(c, REQUEST_PARAM_INVALID, err)
-		return
-	}
-	offset := req.Page * req.PageSize
-
-	// 获取账户信息
-	userService := &UserService{DB: srv.DB}
-	ok, user := userService.hasAdminRole(c)
-
-	var chains []*model.Chain
-
-	// admin查看所有链
-	if ok {
-		if err = srv.DB.Offset(offset).Limit(req.PageSize).Find(&chains).Error; nil != err {
-			ginutil.Response(c, GET_CHAINS_FAIL, err)
-			return
-		}
-	} else {
-		// 获取与账户关联的链
-		if err = srv.DB.Model(&user).Offset(offset).Limit(req.PageSize).Association("OwnerChains").Find(&chains).Error; nil != err {
-			ginutil.Response(c, err, nil)
-			return
-		}
-	}
-
-	ginutil.Response(c, nil, chains)
-}
-
-// ChainDelete remove a block chain.
-// Also remove the nodes under the chain.
-func (srv *ChainService) ChainDelete(c *gin.Context) {
-	var err error
-
-	// 获取主体信息
+// Unjoin 退出加入链
+func (srv *ChainService) Unjoin(c *gin.Context) {
 	var chainInfo = &requestChainParam{}
-	if err = c.ShouldBindJSON(chainInfo); nil != err {
-		ginutil.Response(c, REQUEST_PARAM_INVALID, nil)
+	if err := c.ShouldBindJSON(chainInfo); nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
 
 	// 校验参数
-	if ok, errMsg := chainInfo.validateChainID(); !ok {
+	if ok, errMsg := chainInfo.validateID(); !ok {
 		ginutil.Response(c, REQUEST_PARAM_INVALID, errMsg)
 		return
 	}
 
 	// 查询链信息
-	chain := &model.Chain{}
-	if err = srv.DB.First(chain, chainInfo.ID).Error; nil != err {
-		ginutil.Response(c, CHAINID_NOT_EXIST, err)
-		return
-	}
-
-	// 获取源链信息
-	orginChain := &model.Chain{}
-	if err := srv.DB.First(orginChain, chain.OriginID).Error; err != nil {
-		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, err)
+	joinChain, err := srv.getJoinChain(chainInfo.ID)
+	if nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
 
 	// 获取账户信息
 	userService := &UserService{DB: srv.DB}
 	_, user := userService.hasAdminRole(c)
-
-	// 验证当前用户是否有修改权(admin 不可以删除)
-	if chain.UserID != user.ID {
-		ginutil.Response(c, NOPERMISSION, nil)
+	if user.Name == "admin" {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, "admin")
+		return
+	}
+	if user.ID == joinChain.UserID {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, "unjoin self")
 		return
 	}
 
-	spec := generate.NewAppSpec(user.Name, chain.Name, orginChain.Name)
-	if spec == nil {
-		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, nil)
+	if err := joinChain.Unjoin(srv.DB, user); nil != err {
+		ginutil.Response(c, DELETE_FAIL, err.Error())
 		return
 	}
-
-	if err = spec.Remove(); nil != err {
-		ginutil.Response(c, DELETE_FAIL, err)
-		return
-	}
-
-	tx := srv.DB.Begin()
-	if ok, err := chainDeploySDelete(user, chain, orginChain.Name, tx); !ok {
-		tx.Rollback()
-		ginutil.Response(c, DELETE_FAIL, err)
-		return
-	}
-
-	// 删除chain的数据
-	deleteDB := srv.DB.Unscoped().Where(chain).Delete(model.Chain{})
-	if err := deleteDB.Error; nil != err {
-		tx.Rollback()
-		ginutil.Response(c, DELETE_FAIL, err)
-		return
-	}
-
-	tx.Commit()
 	ginutil.Response(c, nil, nil)
 }
 
-// ChainExit exit the join chain
-func (srv *ChainService) ChainExit(c *gin.Context) {
-	var err error
-
-	// 获取主体信息
-	var chainInfo = &requestChainParam{}
-	if err = c.ShouldBindJSON(chainInfo); nil != err {
-		ginutil.Response(c, REQUEST_PARAM_INVALID, err)
-		return
-	}
-
-	// 校验参数
-	if ok, errMsg := chainInfo.validateChainID(); !ok {
-		ginutil.Response(c, REQUEST_PARAM_INVALID, errMsg)
-		return
-	}
-
-	// 查询链信息
-	chain := &model.Chain{}
-	if err = srv.DB.First(chain, chainInfo.ID).Error; nil != err {
-		ginutil.Response(c, CHAINID_NOT_EXIST, err)
-		return
-	}
-
-	// 获取源链信息
-	orginChain := &model.Chain{}
-	if err := srv.DB.First(orginChain, chain.OriginID).Error; err != nil {
-		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, err)
-		return
-	}
-
-	// 获取账户信息
-	userService := &UserService{DB: srv.DB}
-	_, user := userService.hasAdminRole(c)
-
-	// 如果是该用户是创建者（不可退出）
-	if user.ID == chain.UserID {
-		ginutil.Response(c, DELETE_FAIL, err)
-		return
-	}
-
-	spec := generate.NewAppSpec(user.Name, chain.Name, orginChain.Name)
-	if spec == nil {
-		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, nil)
-		return
-	}
-
-	if err = spec.Remove(); nil != err {
-		ginutil.Response(c, DELETE_FAIL, err)
-		return
-	}
-
-	tx := srv.DB.Begin()
-	if ok, err := chainDeploySDelete(user, chain, orginChain.Name, tx); !ok {
-		tx.Rollback()
-		ginutil.Response(c, DELETE_FAIL, err)
-		return
-	}
-
-	// 删除联系
-	if err = tx.Model(user).Association("OwnerChains").Delete(chain).Error; nil != err {
-		tx.Rollback()
-		ginutil.Response(c, DELETE_FAIL, err)
-		return
-	}
-
-	tx.Commit()
-	ginutil.Response(c, nil, chain)
-}
-
-// ChainUpdate update chain information
-func (srv *ChainService) ChainUpdate(c *gin.Context) {
-	// 读取主体信息
-	var err error
-	var chainInfo = &requestChainParam{}
-	if err = c.ShouldBindJSON(chainInfo); nil != err {
-		ginutil.Response(c, REQUEST_PARAM_INVALID, nil)
-		return
-	}
-
-	// 校验ID是否存在
-	if ok, errMsg := chainInfo.validateChainUpdate(); !ok {
-		ginutil.Response(c, REQUEST_PARAM_INVALID, errMsg)
-		return
-	}
-
-	// 获取链对应的账户ID
-	chainVerify := &model.Chain{}
-	if err = srv.DB.First(chainVerify, chainInfo.ID).Error; nil != err {
-		ginutil.Response(c, CHAINID_NOT_EXIST, nil)
-		return
-	}
-
-	// 获取账户信息
-	userService := &UserService{DB: srv.DB}
-	_, user := userService.hasAdminRole(c)
-
-	// 验证当前用户是否有修改权(admin 不可以更新)
-	if chainVerify.UserID != user.ID {
-		ginutil.Response(c, NOPERMISSION, nil)
-		return
-	}
-
-	// 更新链
-	chain := &model.Chain{Model: model.Model{ID: chainInfo.ID}}
-	updateDB := srv.DB.Model(chain).Updates(
-		&model.Chain{
-			Name:        chainInfo.Name,
-			Url:         chainInfo.Url,
-			Public:      chainInfo.Public,
-			Description: chainInfo.Description,
-		})
-	if err = updateDB.Error; nil != err {
-		ginutil.Response(c, err, nil)
-		return
-	}
-
-	// 获取最新链数据
-	if err = srv.DB.First(chain, chainInfo.ID).Error; nil != err {
-		ginutil.Response(c, CHAINID_NOT_EXIST, nil)
-		return
-	}
-
-	// 返回更新链结果
-	ginutil.Response(c, nil, chain)
-}
-
-type requestChainConfig struct {
-	ID     uint   `json:"id"`
-	Config string `json:"config"`
-}
-
-// ChainGetConfig get the chain configuration file.
-func (srv *ChainService) ChainGetConfig(c *gin.Context) {
-	var err error
-
-	// 获取主体信息
+// GetConfig 获得链config内容
+func (srv *ChainService) GetConfig(c *gin.Context) {
 	var chainConfig = &requestChainConfig{}
-	if err = c.ShouldBindJSON(chainConfig); nil != err {
-		ginutil.Response(c, REQUEST_PARAM_INVALID, err)
+	if err := c.ShouldBindJSON(chainConfig); nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
 
@@ -492,43 +319,37 @@ func (srv *ChainService) ChainGetConfig(c *gin.Context) {
 
 	// 查询链信息
 	chain := &model.Chain{}
-	if err = srv.DB.First(chain, chainConfig.ID).Error; nil != err {
-		ginutil.Response(c, CHAINID_NOT_EXIST, err)
-		return
-	}
-
-	// 获得来源链信息
-	orgChain := &model.Chain{}
-	if err = srv.DB.First(orgChain, chain.OriginID).Error; nil != err {
-		ginutil.Response(c, CHAINID_NOT_EXIST, err)
+	if err := srv.DB.First(chain, chainConfig.ID).Error; nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
 
 	// 获取账户信息
 	userService := &UserService{DB: srv.DB}
 	_, user := userService.hasAdminRole(c)
+	if chain.UserID != user.ID {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, "not self")
+		return
+	}
 
-	spec := generate.NewAppSpec(user.Name, chain.Name, orgChain.Name)
-	if spec == nil {
-		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, nil)
+	spec, err := chain.Spec(srv.DB)
+	if err != nil {
+		ginutil.Response(c, EXEC_FAILED, err.Error())
 		return
 	}
 	config, err := spec.GetConfig()
 	if err != nil {
-		ginutil.Response(c, nil, err)
+		ginutil.Response(c, EXEC_FAILED, err.Error())
 		return
 	}
 	ginutil.Response(c, nil, config)
 }
 
-// ChainSetConfig set up the chain configuration file
-func (srv *ChainService) ChainSetConfig(c *gin.Context) {
-	var err error
-
-	// 获取主体信息
+// SetConfig 用户修改链config内容
+func (srv *ChainService) SetConfig(c *gin.Context) {
 	var chainConfig = &requestChainConfig{}
-	if err = c.ShouldBindJSON(chainConfig); nil != err {
-		ginutil.Response(c, REQUEST_PARAM_INVALID, err)
+	if err := c.ShouldBindJSON(chainConfig); nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
 
@@ -540,46 +361,42 @@ func (srv *ChainService) ChainSetConfig(c *gin.Context) {
 
 	// 查询链信息
 	chain := &model.Chain{}
-	if err = srv.DB.First(chain, chainConfig.ID).Error; nil != err {
-		ginutil.Response(c, CHAINID_NOT_EXIST, err)
-		return
-	}
-
-	// 获得来源链信息
-	orgChain := &model.Chain{}
-	if err = srv.DB.First(orgChain, chain.OriginID).Error; nil != err {
-		ginutil.Response(c, CHAINID_NOT_EXIST, err)
+	if err := srv.DB.First(chain, chainConfig.ID).Error; nil != err {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, err.Error())
 		return
 	}
 
 	// 获取账户信息
 	userService := &UserService{DB: srv.DB}
 	_, user := userService.hasAdminRole(c)
-
-	spec := generate.NewAppSpec(user.Name, chain.Name, orgChain.Name)
-	if spec == nil {
-		ginutil.Response(c, NOT_SUPPORT_ORIGIN_CHAIN, nil)
+	if chain.UserID != user.ID {
+		ginutil.Response(c, REQUEST_PARAM_INVALID, "not self")
 		return
 	}
-	err = spec.SetConfig(chainConfig.Config)
+
+	spec, err := chain.Spec(srv.DB)
 	if err != nil {
-		ginutil.Response(c, nil, err)
+		ginutil.Response(c, EXEC_FAILED, err.Error())
+		return
+	}
+
+	if err := spec.SetConfig(chainConfig.Config); err != nil {
+		ginutil.Response(c, EXEC_FAILED, err.Error())
 		return
 	}
 	ginutil.Response(c, nil, nil)
 }
 
-// Register api
+// Register ...
 func (srv *ChainService) Register(router *gin.Engine, api *gin.RouterGroup) {
 	chain := api.Group("/chain")
-	chain.POST("/add", srv.ChainAdd)
-	chain.POST("/publiclist", srv.PublicChainList)
-	chain.POST("/join", srv.ChainJoin)
-	chain.POST("/originlist", srv.OriginChainList)
-	chain.POST("/list", srv.ChainList)
-	chain.POST("/delete", srv.ChainDelete)
-	chain.POST("/exit", srv.ChainExit)
-	chain.POST("/update", srv.ChainUpdate)
-	chain.POST("/getconfig", srv.ChainGetConfig)
-	chain.POST("/setconfig", srv.ChainSetConfig)
+	chain.POST("/ancestorlist", srv.AncestorList)
+	chain.POST("/joinlist", srv.JoinList)
+	chain.POST("/list", srv.List)
+	chain.POST("/add", srv.Add)
+	chain.POST("/remove", srv.Delete)
+	chain.POST("/join", srv.Join)
+	chain.POST("/unjoin", srv.Unjoin)
+	chain.POST("/getconfig", srv.GetConfig)
+	chain.POST("/setconfig", srv.SetConfig)
 }
